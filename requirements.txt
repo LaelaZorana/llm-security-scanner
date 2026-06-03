@@ -1,0 +1,5 @@
+# Runtime dependencies. Lean by design — the scanner runs fully offline with
+# just these two. The real-provider backend (openai) is optional; see
+# pyproject.toml [project.optional-dependencies].
+PyYAML>=6.0
+Jinja2>=3.1

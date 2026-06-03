@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "llm-security-scanner"
+version = "0.1.0"
+description = "Security-test any LLM endpoint and generate a governance package (vulnerability report + NIST AI RMF / ISO 42001 model card + risk register)."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Laela Zorana" }]
+keywords = [
+    "llm",
+    "security",
+    "ai-safety",
+    "red-teaming",
+    "prompt-injection",
+    "ai-governance",
+    "nist-ai-rmf",
+    "iso-42001",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Security",
+    "Intended Audience :: Developers",
+]
+dependencies = [
+    "PyYAML>=6.0",
+    "Jinja2>=3.1",
+]
+
+[project.optional-dependencies]
+# Real-provider backend. Optional: the scanner runs fully offline without it.
+openai = ["openai>=1.0"]
+# Web report viewer / landing demo. Optional: the CLI + reports work without it.
+viewer = ["fastapi>=0.110", "uvicorn>=0.27"]
+dev = ["pytest>=7.0", "fastapi>=0.110", "httpx>=0.27"]
+
+[project.scripts]
+llm-scan = "llm_security_scanner.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/LaelaZorana/llm-security-scanner"
+Repository = "https://github.com/LaelaZorana/llm-security-scanner"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+llm_security_scanner = ["probes/*.yaml", "templates/*.j2"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

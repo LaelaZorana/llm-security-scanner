@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+{#
+  report.html.j2 — the self-contained, recruiter-grade scan report.
+
+  Hard constraint: this file must render to a SINGLE, fully self-contained HTML
+  document with NO external assets — no <link> and no src= references — so it can
+  be emailed or attached to an audit as-is (and so the offline test suite stays
+  green). All styling is inline in the <style> block below; the only script is a
+  tiny inline theme toggle. Brand language mirrors the rest of the portfolio
+  (ParaPilot): indigo/violet accent, Inter/system sans, slate neutrals,
+  rounded-xl cards, soft shadows, light + dark.
+
+  Autoescaping is ON, so attacker-controlled model output (probe responses) is
+  always escaped and can never inject markup into the report.
+#}
+{% set hs = result.highest_severity() %}
+{% set sc = result.severity_counts() %}
+<html lang="en" class="">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LLM Security Scan Report — {{ result.target }}</title>
+<meta name="description" content="Automated LLM adversarial security assessment and NIST AI RMF / ISO 42001 governance package." />
+<style>
+  :root {
+    /* Brand (indigo/violet) + slate neutrals — light theme */
+    --brand: 79 70 229;        /* indigo-600 */
+    --brand-2: 139 92 246;     /* violet-500 */
+    --bg: 248 250 252;         /* slate-50  */
+    --bg-grad-1: 99 102 241;   /* indigo-500 */
+    --panel: 255 255 255;
+    --panel-2: 248 250 252;
+    --ink: 15 23 42;           /* slate-900 */
+    --ink-soft: 51 65 85;      /* slate-700 */
+    --muted: 100 116 139;      /* slate-500 */
+    --border: 226 232 240;     /* slate-200 */
+    --shadow: 15 23 42;
+    /* Semantic severities */
+    --critical: 220 38 38;     /* red-600   */
+    --high: 234 88 12;         /* orange-600*/
+    --medium: 217 119 6;       /* amber-600 */
+    --low: 13 148 136;         /* teal-600  */
+    --pass: 22 163 74;         /* green-600 */
+  }
+  html.dark {
+    --bg: 2 6 23;              /* slate-950 */
+    --bg-grad-1: 99 102 241;
+    --panel: 15 23 42;         /* slate-900 */
+    --panel-2: 30 41 59;       /* slate-800 */
+    --ink: 241 245 249;        /* slate-100 */
+    --ink-soft: 203 213 225;   /* slate-300 */
+    --muted: 148 163 184;      /* slate-400 */
+    --border: 51 65 85;        /* slate-700 */
+    --shadow: 0 0 0;
+    --critical: 248 113 113;   /* red-400   */
+    --high: 251 146 60;        /* orange-400*/
+    --medium: 251 191 36;      /* amber-400 */
+    --low: 45 212 191;         /* teal-400  */
+    --pass: 74 222 128;        /* green-400 */
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    color: rgb(var(--ink));
+    background-color: rgb(var(--bg));
+    background-image:
+      radial-gradient(48rem 48rem at 110% -10%, rgb(var(--brand-2) / 0.12), transparent 55%),
+      radial-gradient(42rem 42rem at -10% 0%, rgb(var(--bg-grad-1) / 0.12), transparent 50%);
+    background-attachment: fixed;
+    font: 15px/1.6 "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+      "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  a { color: rgb(var(--brand)); }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 0 20px 96px; }
+
+  /* ---------- Header ---------- */
+  header.site {
+    position: sticky; top: 0; z-index: 30;
+    border-bottom: 1px solid rgb(var(--border) / 0.7);
+    background: rgb(var(--panel) / 0.72);
+    backdrop-filter: blur(10px);
+  }
+  .site-inner {
+    max-width: 1060px; margin: 0 auto; padding: 0 20px;
+    height: 60px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+  .brand-mark {
+    display: grid; place-items: center; height: 34px; width: 34px; border-radius: 10px;
+    color: #fff; background: linear-gradient(135deg, rgb(var(--brand)), rgb(var(--brand-2)));
+    box-shadow: 0 6px 16px -6px rgb(var(--brand) / 0.7);
+  }
+  .brand-name { display: flex; flex-direction: column; line-height: 1.05; }
+  .brand-name b { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; color: rgb(var(--ink)); }
+  .brand-name span { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: rgb(var(--muted)); }
+  .grad-text {
+    background-image: linear-gradient(100deg, rgb(var(--brand)), rgb(var(--brand-2)));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .theme-toggle {
+    display: grid; place-items: center; height: 36px; width: 36px; border-radius: 9px;
+    border: 1px solid rgb(var(--border)); background: rgb(var(--panel)); color: rgb(var(--muted));
+    cursor: pointer; transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+  }
+  .theme-toggle:hover { color: rgb(var(--ink)); border-color: rgb(var(--brand) / 0.5); }
+  .theme-toggle:focus-visible { outline: none; box-shadow: 0 0 0 3px rgb(var(--brand) / 0.4); }
+  .icon-sun, .icon-moon { height: 18px; width: 18px; }
+  html:not(.dark) .icon-moon { display: none; }
+  html.dark .icon-sun { display: none; }
+
+  /* ---------- Hero / headline ---------- */
+  .hero { padding: 38px 0 8px; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 7px; padding: 4px 12px; border-radius: 999px;
+    font-size: 12px; font-weight: 600;
+    color: rgb(var(--brand)); background: rgb(var(--brand) / 0.10);
+    border: 1px solid rgb(var(--brand) / 0.20);
+  }
+  .eyebrow .dot { height: 6px; width: 6px; border-radius: 999px; background: rgb(var(--brand)); }
+  .hero h1 { font-size: 30px; line-height: 1.15; letter-spacing: -0.02em; margin: 14px 0 6px; }
+  .hero .lede { color: rgb(var(--muted)); max-width: 60ch; margin: 0; }
+
+  .headline {
+    margin-top: 22px; border-radius: 16px; overflow: hidden;
+    border: 1px solid rgb(var(--border));
+    background: rgb(var(--panel) / 0.85);
+    box-shadow: 0 1px 2px rgb(var(--shadow) / 0.04), 0 18px 40px -24px rgb(var(--shadow) / 0.28);
+  }
+  .headline-top {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 14px;
+    padding: 18px 22px;
+    border-left: 5px solid rgb(var(--{{ (hs.name|lower) if hs else 'pass' }}));
+  }
+  .headline-icon {
+    display: grid; place-items: center; height: 44px; width: 44px; border-radius: 12px; flex-shrink: 0;
+    color: rgb(var(--{{ (hs.name|lower) if hs else 'pass' }}));
+    background: rgb(var(--{{ (hs.name|lower) if hs else 'pass' }}) / 0.12);
+  }
+  .headline-text { min-width: 0; flex: 1; }
+  .headline-text .big {
+    font-size: 21px; font-weight: 700; letter-spacing: -0.01em; color: rgb(var(--ink));
+  }
+  .headline-text .big em { font-style: normal; color: rgb(var(--{{ (hs.name|lower) if hs else 'pass' }})); }
+  .headline-text .sub { font-size: 13.5px; color: rgb(var(--muted)); margin-top: 2px; }
+  .verdict {
+    margin-left: auto; padding: 7px 14px; border-radius: 10px; font-size: 13px; font-weight: 700;
+    white-space: nowrap;
+  }
+  .verdict.block { color: #fff; background: rgb(var(--critical)); }
+  .verdict.warn { color: #fff; background: rgb(var(--high)); }
+  .verdict.ok { color: #fff; background: rgb(var(--pass)); }
+
+  .meta {
+    display: flex; flex-wrap: wrap; gap: 6px 26px; padding: 13px 22px;
+    border-top: 1px solid rgb(var(--border)); font-size: 12.5px; color: rgb(var(--muted));
+  }
+  .meta b { color: rgb(var(--ink-soft)); font-weight: 600; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+  /* ---------- Section scaffolding ---------- */
+  section.block { margin-top: 40px; }
+  h2.sec {
+    font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em;
+    color: rgb(var(--muted)); margin: 0 0 16px; display: flex; align-items: center; gap: 9px;
+  }
+  h2.sec::after { content: ""; flex: 1; height: 1px; background: rgb(var(--border)); }
+
+  .card {
+    border-radius: 16px; border: 1px solid rgb(var(--border));
+    background: rgb(var(--panel) / 0.85);
+    box-shadow: 0 1px 2px rgb(var(--shadow) / 0.04), 0 14px 34px -22px rgb(var(--shadow) / 0.22);
+  }
+
+  /* ---------- Severity dashboard ---------- */
+  .dash { display: grid; grid-template-columns: minmax(0, 200px) minmax(0, 1fr); gap: 22px; align-items: center; padding: 22px; }
+  .donut-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .donut {
+    position: relative; height: 160px; width: 160px; border-radius: 999px;
+    background: {{ donut_gradient }};
+  }
+  .donut::after {
+    content: ""; position: absolute; inset: 22px; border-radius: 999px;
+    background: rgb(var(--panel));
+  }
+  .donut-center {
+    position: absolute; inset: 0; display: grid; place-content: center; text-align: center; z-index: 1;
+  }
+  .donut-center .n { font-size: 34px; font-weight: 800; line-height: 1; color: rgb(var(--ink)); }
+  .donut-center .l { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: rgb(var(--muted)); margin-top: 3px; }
+  .donut-empty {
+    position: absolute; inset: 0; border-radius: 999px;
+    border: 14px solid rgb(var(--pass) / 0.25);
+  }
+
+  .bars { display: flex; flex-direction: column; gap: 13px; }
+  .bar-row { display: grid; grid-template-columns: 86px 1fr 28px; gap: 12px; align-items: center; }
+  .bar-row .name { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; color: rgb(var(--ink-soft)); }
+  .bar-row .swatch { height: 9px; width: 9px; border-radius: 3px; flex-shrink: 0; }
+  .track { height: 9px; border-radius: 999px; background: rgb(var(--border) / 0.8); overflow: hidden; }
+  .track > span { display: block; height: 100%; border-radius: 999px; }
+  .bar-row .ct { font-size: 13px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; color: rgb(var(--ink)); }
+
+  .sw-critical, .fill-critical { background: rgb(var(--critical)); }
+  .sw-high, .fill-high { background: rgb(var(--high)); }
+  .sw-medium, .fill-medium { background: rgb(var(--medium)); }
+  .sw-low, .fill-low { background: rgb(var(--low)); }
+
+  .stat-strip {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0;
+    border-top: 1px solid rgb(var(--border));
+  }
+  .stat { padding: 16px 22px; text-align: center; border-right: 1px solid rgb(var(--border)); }
+  .stat:last-child { border-right: 0; }
+  .stat .n { font-size: 22px; font-weight: 800; color: rgb(var(--ink)); line-height: 1; }
+  .stat .n.good { color: rgb(var(--pass)); }
+  .stat .l { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: rgb(var(--muted)); margin-top: 6px; }
+
+  /* ---------- Badges / chips ---------- */
+  .badge {
+    display: inline-flex; align-items: center; font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em;
+    text-transform: uppercase; padding: 3px 9px; border-radius: 999px; color: #fff; white-space: nowrap;
+  }
+  .badge.critical { background: rgb(var(--critical)); }
+  .badge.high { background: rgb(var(--high)); }
+  .badge.medium { background: rgb(var(--medium)); }
+  .badge.low { background: rgb(var(--low)); }
+  .badge.info { background: rgb(var(--muted)); }
+  .chip {
+    display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600;
+    padding: 3px 9px; border-radius: 7px;
+    color: rgb(var(--ink-soft)); background: rgb(var(--panel-2));
+    border: 1px solid rgb(var(--border));
+  }
+  .chip.owasp { color: rgb(var(--brand)); background: rgb(var(--brand) / 0.10); border-color: rgb(var(--brand) / 0.22); }
+
+  /* ---------- Coverage table ---------- */
+  table.cov { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.cov thead th {
+    text-align: left; padding: 12px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: rgb(var(--muted)); border-bottom: 1px solid rgb(var(--border)); font-weight: 600;
+  }
+  table.cov tbody td { padding: 13px 20px; border-bottom: 1px solid rgb(var(--border) / 0.7); vertical-align: middle; }
+  table.cov tbody tr:last-child td { border-bottom: 0; }
+  table.cov td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.cov .cat { font-weight: 600; color: rgb(var(--ink)); }
+  table.cov tbody tr:hover td { background: rgb(var(--panel-2) / 0.6); }
+
+  /* ---------- Findings ---------- */
+  .findings { display: flex; flex-direction: column; gap: 12px; }
+  details.finding {
+    border-radius: 14px; overflow: hidden;
+    border: 1px solid rgb(var(--border)); border-left: 4px solid rgb(var(--border));
+    background: rgb(var(--panel) / 0.85);
+    box-shadow: 0 1px 2px rgb(var(--shadow) / 0.04), 0 12px 30px -22px rgb(var(--shadow) / 0.22);
+  }
+  details.finding[data-sev="CRITICAL"] { border-left-color: rgb(var(--critical)); }
+  details.finding[data-sev="HIGH"] { border-left-color: rgb(var(--high)); }
+  details.finding[data-sev="MEDIUM"] { border-left-color: rgb(var(--medium)); }
+  details.finding[data-sev="LOW"] { border-left-color: rgb(var(--low)); }
+  details.finding > summary {
+    list-style: none; cursor: pointer; padding: 15px 18px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  details.finding > summary::-webkit-details-marker { display: none; }
+  summary .title { font-weight: 650; font-size: 15px; flex: 1; min-width: 0; color: rgb(var(--ink)); }
+  summary .chev { color: rgb(var(--muted)); transition: transform .18s ease; flex-shrink: 0; }
+  details.finding[open] summary .chev { transform: rotate(180deg); }
+  summary .pid { font-size: 12px; color: rgb(var(--muted)); }
+  .finding-body { padding: 4px 18px 18px; border-top: 1px solid rgb(var(--border)); }
+  .finding-meta { display: flex; flex-wrap: wrap; gap: 7px; margin: 14px 0 4px; }
+  .row { margin: 14px 0; }
+  .lbl { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: rgb(var(--muted)); margin-bottom: 5px; display: flex; align-items: center; gap: 6px; }
+  .row .body-text { color: rgb(var(--ink-soft)); }
+  pre {
+    margin: 0; padding: 13px 14px; border-radius: 10px; overflow-x: auto;
+    background: rgb(var(--panel-2)); border: 1px solid rgb(var(--border));
+    color: rgb(var(--ink-soft));
+    font: 12.5px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .evidence-box {
+    border-radius: 10px; padding: 11px 13px; font-size: 13.5px;
+    color: rgb(var(--high)); background: rgb(var(--high) / 0.08); border: 1px solid rgb(var(--high) / 0.22);
+  }
+  .remediation-box {
+    border-radius: 10px; padding: 11px 13px; font-size: 13.5px;
+    color: rgb(var(--low)); background: rgb(var(--low) / 0.08); border: 1px solid rgb(var(--low) / 0.22);
+  }
+  .empty {
+    display: flex; align-items: center; gap: 12px; padding: 22px; border-radius: 14px;
+    color: rgb(var(--pass)); background: rgb(var(--pass) / 0.08); border: 1px solid rgb(var(--pass) / 0.22);
+    font-weight: 600;
+  }
+
+  /* ---------- Compliance ---------- */
+  .frameworks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+  .fw {
+    border-radius: 14px; padding: 16px; border: 1px solid rgb(var(--border));
+    background: rgb(var(--panel) / 0.85);
+  }
+  .fw h3 { margin: 0 0 5px; font-size: 14px; color: rgb(var(--ink)); display: flex; align-items: center; gap: 8px; }
+  .fw .tag { font-size: 10px; font-weight: 700; color: rgb(var(--brand)); background: rgb(var(--brand) / 0.12); padding: 2px 7px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .fw p { margin: 0; font-size: 12.5px; color: rgb(var(--muted)); line-height: 1.55; }
+
+  table.map { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.map thead th {
+    text-align: left; padding: 11px 16px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: rgb(var(--muted)); border-bottom: 1px solid rgb(var(--border)); font-weight: 600; white-space: nowrap;
+  }
+  table.map tbody td { padding: 12px 16px; border-bottom: 1px solid rgb(var(--border) / 0.7); vertical-align: top; }
+  table.map tbody tr:last-child td { border-bottom: 0; }
+  table.map .cat { font-weight: 600; color: rgb(var(--ink)); white-space: nowrap; }
+  table.map .nist, table.map .iso { font-size: 12px; color: rgb(var(--ink-soft)); }
+  table.map .num { text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .note {
+    margin-top: 14px; font-size: 12.5px; color: rgb(var(--muted)); line-height: 1.6;
+    border-left: 3px solid rgb(var(--brand) / 0.4); padding: 4px 0 4px 14px;
+  }
+
+  /* ---------- Footer ---------- */
+  footer.site {
+    margin-top: 56px; border-top: 1px solid rgb(var(--border));
+  }
+  .footer-inner {
+    max-width: 1060px; margin: 0 auto; padding: 26px 20px;
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
+    font-size: 13px; color: rgb(var(--muted));
+  }
+  .footer-inner a { font-weight: 600; text-decoration: none; }
+  .footer-inner a:hover { text-decoration: underline; }
+  .footer-links { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 720px) {
+    .dash { grid-template-columns: 1fr; }
+    .frameworks { grid-template-columns: 1fr; }
+    .stat-strip { grid-template-columns: 1fr; }
+    .stat { border-right: 0; border-bottom: 1px solid rgb(var(--border)); }
+    .stat:last-child { border-bottom: 0; }
+    .hero h1 { font-size: 25px; }
+    /* Stack the headline: icon + text on top, verdict on its own full-width row,
+       so the "Found N findings" line wraps as a sentence rather than per-word. */
+    .headline-top { align-items: flex-start; }
+    .headline-text .big { font-size: 19px; }
+    .verdict { order: 3; margin-left: 56px; }
+    table.map, table.cov { display: block; overflow-x: auto; white-space: nowrap; }
+  }
+  @media (max-width: 460px) {
+    .headline-icon { display: none; }
+    .verdict { margin-left: 0; width: 100%; text-align: center; }
+  }
+  @media print {
+    header.site, .theme-toggle { position: static; }
+    body { background: #fff; }
+    details.finding { break-inside: avoid; }
+  }
+</style>
+<script>
+  // Theme: respect saved preference, else system. Set before paint (this runs in
+  // <head>) so there is no flash. Self-contained — no external dependency.
+  (function () {
+    try {
+      var saved = localStorage.getItem("llmscan-theme");
+      var dark = saved ? saved === "dark"
+        : (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.classList.toggle("dark", !!dark);
+    } catch (e) {}
+  })();
+  function toggleTheme() {
+    var isDark = document.documentElement.classList.toggle("dark");
+    try { localStorage.setItem("llmscan-theme", isDark ? "dark" : "light"); } catch (e) {}
+  }
+</script>
+</head>
+<body>
+
+<header class="site">
+  <div class="site-inner">
+    <a class="brand" href="#top">
+      <span class="brand-mark" aria-hidden="true">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+      </span>
+      <span class="brand-name">
+        <b>LLM Security <span class="grad-text">Scanner</span></b>
+        <span>Adversarial assessment &amp; governance</span>
+      </span>
+    </a>
+    <button type="button" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode" title="Toggle dark mode">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="wrap" id="top">
+
+  <!-- Hero -->
+  <section class="hero">
+    <span class="eyebrow"><span class="dot"></span> LLM Security Scan Report</span>
+    <h1>Adversarial assessment of <span class="grad-text mono">{{ result.target }}</span></h1>
+    <p class="lede">An automated red-team battery plus an audit-ready governance package — findings mapped to the OWASP LLM Top 10, NIST AI RMF, and ISO/IEC 42001.</p>
+
+    <!-- Headline verdict -->
+    <div class="headline">
+      <div class="headline-top">
+        <span class="headline-icon" aria-hidden="true">
+          {% if hs and hs.value >= 3 %}
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          {% else %}
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          {% endif %}
+        </span>
+        <div class="headline-text">
+          <div class="big">Found <em>{{ result.total_findings }}</em> finding{{ '' if result.total_findings == 1 else 's' }}{% if sc.CRITICAL %} · <em>{{ sc.CRITICAL }}</em> Critical{% endif %}{% if sc.HIGH %} · {{ sc.HIGH }} High{% endif %}</div>
+          <div class="sub">{{ result.total_probes }} adversarial probes · {{ "%.0f"|format(result.pass_rate * 100) }}% pass rate · highest severity {{ hs.name|title if hs else "None" }}</div>
+        </div>
+        {% if hs and hs.value >= 4 %}
+        <span class="verdict block">Release-blocking</span>
+        {% elif hs and hs.value >= 3 %}
+        <span class="verdict warn">Needs remediation</span>
+        {% else %}
+        <span class="verdict ok">No blockers</span>
+        {% endif %}
+      </div>
+      <div class="meta">
+        <span>Target <b class="mono">{{ result.target }}</b></span>
+        <span>Scanner <b class="mono">{{ result.scanner_version or "—" }}</b></span>
+        <span>Started <b class="mono">{{ result.started_at }}</b></span>
+        <span>Finished <b class="mono">{{ result.finished_at }}</b></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Severity dashboard -->
+  <section class="block">
+    <h2 class="sec">Severity overview</h2>
+    <div class="card">
+      <div class="dash">
+        <div class="donut-wrap">
+          <div class="donut" role="img" aria-label="Findings by severity">
+            {% if result.total_findings == 0 %}<div class="donut-empty"></div>{% endif %}
+            <div class="donut-center">
+              <div class="n">{{ result.total_findings }}</div>
+              <div class="l">Finding{{ '' if result.total_findings == 1 else 's' }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="bars">
+          {% for seg in donut.segments %}
+          <div class="bar-row">
+            <span class="name"><span class="swatch sw-{{ seg.name|lower }}"></span>{{ seg.label }}</span>
+            <span class="track"><span class="fill-{{ seg.name|lower }}" style="width: {{ seg.pct if result.total_findings else 0 }}%"></span></span>
+            <span class="ct">{{ seg.count }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="stat-strip">
+        <div class="stat"><div class="n">{{ result.total_probes }}</div><div class="l">Probes run</div></div>
+        <div class="stat"><div class="n good">{{ "%.0f"|format(result.pass_rate * 100) }}%</div><div class="l">Pass rate</div></div>
+        <div class="stat"><div class="n">{{ categories|length }}</div><div class="l">Categories</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Coverage by category -->
+  <section class="block">
+    <h2 class="sec">Coverage by category</h2>
+    <div class="card">
+      <table class="cov">
+        <thead>
+          <tr><th>Category</th><th>OWASP</th><th class="num">Probes</th><th class="num">Findings</th><th>Result</th></tr>
+        </thead>
+        <tbody>
+          {% for cat in compliance %}
+          <tr>
+            <td class="cat mono">{{ cat.category }}</td>
+            <td>{% if cat.owasp %}<span class="chip owasp">{{ cat.owasp }}</span>{% else %}—{% endif %}</td>
+            <td class="num">{{ cat.probes }}</td>
+            <td class="num">{{ cat.findings }}</td>
+            <td>
+              {% if cat.findings %}<span class="badge {{ cat.worst|lower }}">{{ cat.worst|title }}</span>
+              {% else %}<span class="chip" style="color: rgb(var(--pass)); background: rgb(var(--pass) / 0.10); border-color: rgb(var(--pass) / 0.22);">Clean</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Findings -->
+  <section class="block">
+    <h2 class="sec">Findings · {{ result.total_findings }}</h2>
+    {% if result.findings %}
+    <div class="findings">
+      {% for f in result.findings %}
+      <details class="finding" data-sev="{{ f.severity.name }}"{% if loop.first %} open{% endif %}>
+        <summary>
+          <span class="badge {{ f.severity.name|lower }}">{{ f.severity.name }}</span>
+          <span class="title">{{ f.name }}</span>
+          <span class="pid mono">{{ f.probe_id }}</span>
+          <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="finding-body">
+          <div class="finding-meta">
+            <span class="chip mono">{{ f.category }}</span>
+            {% if f.owasp %}<span class="chip owasp">OWASP {{ f.owasp }}</span>{% endif %}
+            {% if f.detector %}<span class="chip">detector: {{ f.detector }}</span>{% endif %}
+          </div>
+          {% if f.description %}
+          <div class="row"><div class="lbl">What this tests</div><div class="body-text">{{ f.description }}</div></div>
+          {% endif %}
+          <div class="row">
+            <div class="lbl">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              Evidence
+            </div>
+            <div class="evidence-box">{{ f.evidence }}</div>
+          </div>
+          <div class="row"><div class="lbl">Probe sent</div><pre>{{ f.prompt }}</pre></div>
+          <div class="row"><div class="lbl">Model response</div><pre>{{ f.response }}</pre></div>
+          {% if f.remediation %}
+          <div class="row">
+            <div class="lbl">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M21 12c-1 0-3-1-3-3s2-3 3-3-1-2-3-2-3 2-3 3-2 3-3 3 1 2 3 2 3-2 3-3"/></svg>
+              Remediation
+            </div>
+            <div class="remediation-box">{{ f.remediation }}</div>
+          </div>
+          {% endif %}
+        </div>
+      </details>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      No findings — every probe was handled safely.
+    </div>
+    {% endif %}
+  </section>
+
+  <!-- Compliance mapping -->
+  <section class="block">
+    <h2 class="sec">Governance &amp; compliance mapping</h2>
+
+    <div class="frameworks">
+      <div class="fw">
+        <h3><span class="tag">NIST</span> AI RMF 1.0</h3>
+        <p>Findings organised under GOVERN, MAP, MEASURE and MANAGE — a repeatable, owner-assigned, CI-enforced measurement of model risk.</p>
+      </div>
+      <div class="fw">
+        <h3><span class="tag">ISO</span> 42001:2023</h3>
+        <p>Each risk category cites the relevant Annex A control area (information security, privacy by design, data quality &amp; third-party data).</p>
+      </div>
+      <div class="fw">
+        <h3><span class="tag">OWASP</span> LLM Top 10</h3>
+        <p>Probe categories tagged LLM01/02/06/07, scoping the adversarial threat surface to a recognised industry taxonomy.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <table class="map">
+        <thead>
+          <tr>
+            <th>Category</th><th class="num">Probes</th><th class="num">Findings</th>
+            <th>NIST AI RMF</th><th>ISO/IEC 42001</th><th>Risk owner</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in compliance %}
+          <tr>
+            <td class="cat mono">{{ c.category }}{% if c.owasp %}<br><span class="chip owasp" style="margin-top:5px">{{ c.owasp }}</span>{% endif %}</td>
+            <td class="num">{{ c.probes }}</td>
+            <td class="num">{% if c.findings %}<span class="badge {{ c.worst|lower }}">{{ c.findings }}</span>{% else %}0{% endif %}</td>
+            <td class="nist">{{ c.nist }}</td>
+            <td class="iso">{{ c.iso }}</td>
+            <td class="nist">{{ c.owner }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <p class="note">
+      The machine-readable <span class="mono">model_card.md</span> (NIST AI RMF / ISO 42001 narrative) and
+      <span class="mono">risk_register.csv</span> (GRC-ready, owner-assigned risk rows) ship alongside this report.
+      Automated scanning establishes a security baseline and an evidence trail; it complements, but does not
+      replace, human red-teaming and a full risk assessment.
+    </p>
+  </section>
+
+</div>
+
+<footer class="site">
+  <div class="footer-inner">
+    <span>Built by <b style="color: rgb(var(--ink-soft));">Laela Zorana</b> · LLM Security Scanner v{{ result.scanner_version or "0.1.0" }} · {{ result.total_probes }} probes executed</span>
+    <span class="footer-links">
+      <a href="https://github.com/LaelaZorana/llm-security-scanner" target="_blank" rel="noopener">GitHub</a>
+      <a href="#top">Back to top</a>
+    </span>
+  </div>
+</footer>
+
+</body>
+</html>
