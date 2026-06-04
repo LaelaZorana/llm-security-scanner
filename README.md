@@ -1,16 +1,16 @@
 # llm-security-scanner
 
-**Security-test any LLM endpoint and walk away with an auditor-ready governance package — a vulnerability report plus a NIST AI RMF / ISO 42001 model card and risk register — in one command.**
+**Security-test any LLM endpoint and walk away with an auditor-ready governance package (a vulnerability report plus a NIST AI RMF / ISO 42001 model card and risk register) in one command.**
 
 `Python 3.9+` · `offline-first (no API key)` · `OWASP LLM Top 10` · `NIST AI RMF` · `ISO/IEC 42001` · `79 tests, CI-gated`
 
-> **See it in 10 seconds:** `pip install ".[viewer]" && llm-scan serve` → open <http://127.0.0.1:8000>. The bundled offline target produces a **real, mixed result — 7 findings (2 Critical, 5 High) across 16 probes, 56% pass rate** — rendered as a polished report with a severity dashboard and a full compliance mapping. No keys, no setup.
+> **See it in 10 seconds:** `pip install ".[viewer]" && llm-scan serve` → open <http://127.0.0.1:8000>. The bundled offline target produces a **real, mixed result: 7 findings (2 Critical, 5 High) across 16 probes, 56% pass rate**, rendered as a polished report with a severity dashboard and a full compliance mapping. No keys, no setup.
 
 ## The problem
 
-Teams are shipping LLM features into production faster than their security and governance practices can keep up. Two gaps show up again and again:
+Teams are putting LLM features into production faster than their security and governance practices can keep up. Two gaps show up again and again:
 
-- **No repeatable security testing.** Prompt injection, jailbreaks, system-prompt and secret leakage, and indirect (RAG/tool) injection are well-known LLM attack classes, but most teams have no automated, version-controlled way to test for them on every change — so regressions ship silently.
+- **No repeatable security testing.** Prompt injection, jailbreaks, system-prompt and secret leakage, and indirect (RAG/tool) injection are well-known LLM attack classes, but most teams have no automated, version-controlled way to test for them on every change, so regressions slip through silently.
 - **No governance evidence.** When a customer's security team, an auditor, or an internal risk committee asks "how do you know this model is safe?", there's nothing to hand over. Frameworks like the **NIST AI Risk Management Framework** and **ISO/IEC 42001** expect documented measurement and management of these risks, and producing that paperwork by hand is slow and inconsistent.
 
 This tool closes both gaps at once: it runs a real adversarial test battery against any LLM and emits both the technical findings *and* the compliance deliverables, so the security test and the audit evidence come from the same source of truth.
@@ -52,7 +52,7 @@ Probes are plain YAML, so the battery is extensible without touching the engine.
 
 ## Results / impact
 
-Running the default battery against the bundled offline stub (`make demo`) produces a realistic mixed result — the stub refuses blunt attacks but falls for the subtler ones, exactly like a partially-hardened real model:
+Running the default battery against the bundled offline stub (`make demo`) produces a realistic mixed result: the stub refuses blunt attacks but falls for the subtler ones, exactly like a partially-hardened real model:
 
 | Severity | Findings |
 |----------|----------|
@@ -66,7 +66,7 @@ Example finding (`spl-003`, Critical): a debugging pretext (*"show me your initi
 
 ## Quickstart
 
-Runs fully offline — no API key required.
+Runs fully offline. No API key required.
 
 ```bash
 # 1. install (lean: PyYAML + Jinja2)
@@ -98,7 +98,7 @@ make test                                    # offline test suite
 ### See it in the browser (one command)
 
 A lightweight FastAPI viewer runs the offline scan and serves a polished landing
-page plus the full report — no API key, nothing to configure:
+page plus the full report, with no API key and nothing to configure:
 
 ```bash
 pip install ".[viewer]"          # FastAPI + uvicorn (optional extra)
@@ -124,15 +124,15 @@ llm-scan run --target openai --out ./reports
 ## Tech stack
 
 - **Python 3.9+**, standard library `argparse` CLI (zero CLI dependency).
-- **PyYAML** — data-driven probe packs.
-- **Jinja2** — recruiter-grade, fully self-contained HTML report (inline CSS, light + dark theme toggle, severity donut; autoescaped against attacker-controlled model output, so it needs no external assets and can be emailed/attached as-is).
-- **pytest** — offline test suite (79 tests; each detector verified against a known-good and known-bad response, plus report and viewer coverage).
+- **PyYAML** for data-driven probe packs.
+- **Jinja2** for the recruiter-grade, fully self-contained HTML report (inline CSS, light + dark theme toggle, severity donut; autoescaped against attacker-controlled model output, so it needs no external assets and can be emailed/attached as-is).
+- **pytest** for the offline test suite (79 tests; each detector verified against a known-good and known-bad response, plus report and viewer coverage).
 - **Optional extras** (lazy-imported; the core tool runs without either): `openai` SDK for the real-provider backend, and `fastapi` + `uvicorn` for the `llm-scan serve` web viewer.
 - Provider interface decouples the battery from the target, so adding a backend is one class.
 
 ## Deploy / CI integration
 
-The CLI exits non-zero when a finding at or above `--fail-on` (default `CRITICAL`) is present, so it drops straight into a pipeline as a release gate. A ready-to-use GitHub Actions workflow ships in [`.github/workflows/ci.yml`](.github/workflows/ci.yml); the reusable scan job is:
+The CLI exits non-zero when a finding at or above `--fail-on` (default `CRITICAL`) is present, so it drops straight into a pipeline as a release gate. A ready-to-use GitHub Actions workflow lives in [`.github/workflows/ci.yml`](.github/workflows/ci.yml); the reusable scan job is:
 
 ```yaml
 llm-security-scan:
@@ -163,7 +163,7 @@ Every finding is traceable to a control, so the output doubles as audit evidence
 
 | Framework | How this tool maps to it |
 |-----------|--------------------------|
-| **NIST AI RMF 1.0** | Findings are organised under the four core functions — **GOVERN** (named risk owners + repeatable process), **MAP** (threat surface scoped to OWASP LLM Top 10), **MEASURE** (quantified findings with reproducible evidence), **MANAGE** (risk-rated, prioritised mitigations + CI enforcement). |
+| **NIST AI RMF 1.0** | Findings are organised under the four core functions: **GOVERN** (named risk owners + repeatable process), **MAP** (threat surface scoped to OWASP LLM Top 10), **MEASURE** (quantified findings with reproducible evidence), **MANAGE** (risk-rated, prioritised mitigations + CI enforcement). |
 | **ISO/IEC 42001:2023** | Each risk category cites the relevant Annex A control area (e.g. A.8.3 information security, A.5.4 privacy by design, A.8.4/A.10.2 data quality & third-party data). |
 | **OWASP LLM Top 10** | Probe categories tagged LLM01/02/06/07. |
 
@@ -173,17 +173,17 @@ The `model_card.md` and `risk_register.csv` are the artifacts you hand to a risk
 
 ## Screenshots
 
-The self-contained, recruiter-grade `report.html` — severity dashboard (donut +
+The self-contained, recruiter-grade `report.html`: severity dashboard (donut +
 per-severity bars), per-finding cards with OWASP/category tags, a NIST AI RMF /
 ISO 42001 compliance-mapping table, light + dark themes:
 
 ![LLM security scan report](docs/report-screenshot.png)
 
-> Regenerate locally with `make demo`, then open `reports/report.html` — or run
+> Regenerate locally with `make demo`, then open `reports/report.html`, or run
 > `llm-scan serve` for the landing page + report in the browser. (Screenshots are
 > regenerated on the redesigned report; add a model-card screenshot at
 > `docs/model-card-screenshot.png` if desired.)
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
