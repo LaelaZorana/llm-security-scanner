@@ -19,8 +19,10 @@ server. Run it with:
     uvicorn llm_security_scanner.viewer:app --reload
     # or:  llm-scan serve
 
-The landing page shares the report's brand language (indigo/violet, Inter,
-slate, light + dark) so the demo reads as one product.
+The landing page shares the report's identity — a dark-first enterprise security
+console (near-black slate, a cyan→emerald scanner-signal accent, monospace data,
+a severity colour system and a bento severity dashboard) — so the demo and the
+report read as one product.
 """
 
 from __future__ import annotations
@@ -59,10 +61,10 @@ def get_scan_result() -> ScanResult:
 # Landing page
 # --------------------------------------------------------------------------- #
 _SEVERITY_HEX = {
-    "CRITICAL": "#dc2626",
-    "HIGH": "#ea580c",
-    "MEDIUM": "#d97706",
-    "LOW": "#0d9488",
+    "CRITICAL": "#f43f5e",  # rose-500
+    "HIGH": "#f97316",      # orange-500
+    "MEDIUM": "#f59e0b",    # amber-500
+    "LOW": "#eab308",       # yellow-500
 }
 
 
@@ -91,14 +93,15 @@ def _landing_html(result: ScanResult) -> str:
     n_categories = len({o.probe.category for o in result.outcomes})
     result_gradient = _result_gradient(result)
 
-    # Headline accent + verdict driven by the worst finding.
-    accent = _SEVERITY_HEX.get(hs.name, "#16a34a") if hs else "#16a34a"
+    # Severity accent + verdict driven by the worst finding. Dark-on-light text
+    # for the amber/yellow flags, white for the red/orange ones.
+    accent = _SEVERITY_HEX.get(hs.name, "#34d399") if hs else "#34d399"
     if hs and hs.value >= 4:
-        verdict, verdict_bg = "Release-blocking", "#dc2626"
+        verdict, verdict_bg, verdict_ink = "Release-blocking", "#f43f5e", "#fff"
     elif hs and hs.value >= 3:
-        verdict, verdict_bg = "Needs remediation", "#ea580c"
+        verdict, verdict_bg, verdict_ink = "Needs remediation", "#f97316", "#fff"
     else:
-        verdict, verdict_bg = "No blockers", "#16a34a"
+        verdict, verdict_bg, verdict_ink = "No blockers", "#34d399", "#08121a"
 
     # Headline icon: a warning triangle when there is high+ exposure, else a tick.
     if hs and hs.value >= 3:
@@ -120,13 +123,22 @@ def _landing_html(result: ScanResult) -> str:
 
     donut_empty = "<div class='donut-empty'></div>" if result.total_findings == 0 else ""
 
-    # Severity mini-bars.
+    # Severity stat tiles (bento) + distribution bars share the same numbers.
     total = result.total_findings or 1
+    tiles = ""
     bars = ""
     for name in ("CRITICAL", "HIGH", "MEDIUM", "LOW"):
         count = sc[name]
         pct = round(count / total * 100) if result.total_findings else 0
         color = _SEVERITY_HEX[name]
+        zero = "" if count else " zero"
+        num_cls = " hit" if count else ""
+        tiles += (
+            f'<div class="tile{zero}" style="--t:{color}">'
+            f'<div class="tlabel"><span class="tdot"></span>{name.title()}</div>'
+            f'<div class="tnum{num_cls}">{count}</div>'
+            f'<div class="tbar"><span style="width:{pct}%"></span></div></div>'
+        )
         bars += (
             f'<div class="bar-row"><span class="bname">'
             f'<span class="sw" style="background:{color}"></span>{name.title()}</span>'
@@ -138,107 +150,148 @@ def _landing_html(result: ScanResult) -> str:
     high_clause = f" · {sc['HIGH']} High" if sc["HIGH"] else ""
     plural = "" if result.total_findings == 1 else "s"
     headline_severity = hs.name.title() if hs else "None"
+    findings_cls = "bad" if result.total_findings else "good"
+    sev_cls = "bad" if hs else "good"
 
     return f"""<!DOCTYPE html>
-<html lang="en" class="">
+<html lang="en" class="dark">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>LLM Security Scanner — live demo</title>
+<title>LLM Security Console — live demo</title>
 <meta name="description" content="One-command demo of the LLM Security Scanner: run an adversarial battery against an LLM and get an audit-ready governance package." />
 <style>
   :root {{
-    --brand:79 70 229; --brand-2:139 92 246; --bg:248 250 252; --panel:255 255 255;
-    --panel-2:248 250 252; --ink:15 23 42; --ink-soft:51 65 85; --muted:100 116 139;
-    --border:226 232 240; --shadow:15 23 42; --pass:22 163 74;
+    color-scheme:dark;
+    --signal:45 212 191; --signal-2:56 189 248; --signal-ink:8 18 24;
+    --bg:7 10 17; --bg-2:10 14 23; --grid:148 163 184;
+    --panel:15 20 31; --panel-2:19 25 38; --panel-3:24 31 47;
+    --ink:226 232 240; --ink-soft:148 163 184; --muted:100 116 139;
+    --border:38 48 66; --border-2:51 65 85; --shadow:0 0 0; --pass:52 211 153;
   }}
-  html.dark {{
-    --bg:2 6 23; --panel:15 23 42; --panel-2:30 41 59; --ink:241 245 249;
-    --ink-soft:203 213 225; --muted:148 163 184; --border:51 65 85; --shadow:0 0 0; --pass:74 222 128;
+  html:not(.dark) {{
+    color-scheme:light;
+    --signal:13 148 136; --signal-2:2 132 199; --signal-ink:255 255 255;
+    --bg:244 247 251; --bg-2:237 242 248; --grid:100 116 139;
+    --panel:255 255 255; --panel-2:248 250 252; --panel-3:241 245 249;
+    --ink:15 23 42; --ink-soft:51 65 85; --muted:100 116 139;
+    --border:226 232 240; --border-2:203 213 225; --shadow:15 23 42; --pass:5 150 105;
   }}
   * {{ box-sizing:border-box; }}
   body {{
     margin:0; color:rgb(var(--ink)); background-color:rgb(var(--bg));
     background-image:
-      radial-gradient(48rem 48rem at 110% -10%, rgb(var(--brand-2)/0.12), transparent 55%),
-      radial-gradient(42rem 42rem at -10% 0%, rgb(var(--brand)/0.12), transparent 50%);
-    background-attachment:fixed;
-    font:15px/1.6 "Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      radial-gradient(50rem 36rem at 100% -8%, rgb(var(--signal)/0.10), transparent 60%),
+      radial-gradient(46rem 36rem at -8% -6%, rgb(var(--signal-2)/0.08), transparent 55%),
+      linear-gradient(rgb(var(--grid)/0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--grid)/0.035) 1px, transparent 1px);
+    background-size:auto, auto, 44px 44px, 44px 44px; background-attachment:fixed;
+    font:14.5px/1.6 "Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     -webkit-font-smoothing:antialiased;
   }}
-  a {{ color:rgb(var(--brand)); }}
-  .wrap {{ max-width:920px; margin:0 auto; padding:0 20px 80px; }}
-  header.site {{
-    position:sticky; top:0; z-index:30; border-bottom:1px solid rgb(var(--border)/0.7);
-    background:rgb(var(--panel)/0.72); backdrop-filter:blur(10px);
+  a {{ color:rgb(var(--signal)); text-decoration:none; }}
+  a:hover {{ text-decoration:underline; }}
+  .mono {{ font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }}
+  .wrap {{ max-width:960px; margin:0 auto; padding:0 22px 90px; }}
+  header.console {{
+    position:sticky; top:0; z-index:30; border-bottom:1px solid rgb(var(--border));
+    background:rgb(var(--bg)/0.82); backdrop-filter:blur(12px) saturate(1.2);
   }}
-  .site-inner {{ max-width:920px; margin:0 auto; padding:0 20px; height:60px; display:flex; align-items:center; justify-content:space-between; }}
-  .brand {{ display:flex; align-items:center; gap:10px; text-decoration:none; }}
-  .brand-mark {{ display:grid; place-items:center; height:34px; width:34px; border-radius:10px; color:#fff; background:linear-gradient(135deg,rgb(var(--brand)),rgb(var(--brand-2))); box-shadow:0 6px 16px -6px rgb(var(--brand)/0.7); }}
-  .brand-name b {{ font-size:15px; font-weight:700; letter-spacing:-0.01em; color:rgb(var(--ink)); }}
-  .brand-name span {{ display:block; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:rgb(var(--muted)); }}
-  .grad-text {{ background-image:linear-gradient(100deg,rgb(var(--brand)),rgb(var(--brand-2))); -webkit-background-clip:text; background-clip:text; color:transparent; }}
-  .theme-toggle {{ display:grid; place-items:center; height:36px; width:36px; border-radius:9px; border:1px solid rgb(var(--border)); background:rgb(var(--panel)); color:rgb(var(--muted)); cursor:pointer; }}
-  .theme-toggle:hover {{ color:rgb(var(--ink)); }}
+  .console-inner {{ max-width:960px; margin:0 auto; padding:0 22px; height:58px; display:flex; align-items:center; gap:14px; }}
+  .brand {{ display:flex; align-items:center; gap:11px; text-decoration:none; }}
+  .brand-mark {{ display:grid; place-items:center; height:34px; width:34px; border-radius:9px; color:rgb(var(--signal-ink)); background:linear-gradient(140deg,rgb(var(--signal)),rgb(var(--signal-2))); box-shadow:0 0 0 1px rgb(var(--signal)/0.35),0 8px 22px -10px rgb(var(--signal)/0.8); }}
+  .brand-name {{ display:flex; flex-direction:column; line-height:1.1; }}
+  .brand-name b {{ font-size:14px; font-weight:700; letter-spacing:0.01em; color:rgb(var(--ink)); }}
+  .brand-name span {{ font-size:9.5px; font-weight:600; text-transform:uppercase; letter-spacing:0.16em; color:rgb(var(--muted)); }}
+  .signal-text {{ background-image:linear-gradient(100deg,rgb(var(--signal)),rgb(var(--signal-2))); -webkit-background-clip:text; background-clip:text; color:transparent; }}
+  .spacer {{ flex:1; }}
+  .scan-pill {{ display:inline-flex; align-items:center; gap:8px; padding:5px 12px; border-radius:8px; font-size:11.5px; font-weight:600; color:rgb(var(--ink-soft)); background:rgb(var(--panel-2)); border:1px solid rgb(var(--border)); }}
+  .scan-pill .live {{ height:7px; width:7px; border-radius:999px; background:rgb(var(--pass)); box-shadow:0 0 0 3px rgb(var(--pass)/0.18); }}
+  .theme-toggle {{ display:grid; place-items:center; height:36px; width:36px; border-radius:8px; border:1px solid rgb(var(--border)); background:rgb(var(--panel)); color:rgb(var(--muted)); cursor:pointer; }}
+  .theme-toggle:hover {{ color:rgb(var(--signal)); border-color:rgb(var(--signal)/0.5); }}
   html:not(.dark) .icon-moon {{ display:none; }}
   html.dark .icon-sun {{ display:none; }}
-  .hero {{ padding:54px 0 8px; }}
-  .eyebrow {{ display:inline-flex; align-items:center; gap:7px; padding:4px 12px; border-radius:999px; font-size:12px; font-weight:600; color:rgb(var(--brand)); background:rgb(var(--brand)/0.10); border:1px solid rgb(var(--brand)/0.20); }}
-  .eyebrow .dot {{ height:6px; width:6px; border-radius:999px; background:rgb(var(--brand)); }}
-  h1 {{ font-size:38px; line-height:1.1; letter-spacing:-0.025em; margin:16px 0 10px; }}
-  .lede {{ color:rgb(var(--muted)); font-size:17px; max-width:60ch; margin:0; }}
+  .hero {{ padding:50px 0 8px; }}
+  .kicker {{ display:inline-flex; align-items:center; gap:8px; font-family:"JetBrains Mono",ui-monospace,monospace; font-size:11px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:rgb(var(--signal)); background:rgb(var(--signal)/0.10); border:1px solid rgb(var(--signal)/0.28); padding:5px 11px; border-radius:7px; }}
+  .kicker .dot {{ height:6px; width:6px; border-radius:999px; background:rgb(var(--signal)); }}
+  h1 {{ font-size:38px; line-height:1.08; letter-spacing:-0.025em; margin:18px 0 10px; font-weight:760; }}
+  .lede {{ color:rgb(var(--ink-soft)); font-size:16.5px; max-width:62ch; margin:0; }}
   .cta {{ margin-top:26px; display:flex; flex-wrap:wrap; gap:12px; }}
-  .btn {{ display:inline-flex; align-items:center; gap:8px; padding:11px 20px; border-radius:11px; font-size:15px; font-weight:600; text-decoration:none; cursor:pointer; }}
-  .btn.primary {{ color:#fff; background:linear-gradient(135deg,rgb(var(--brand)),rgb(var(--brand-2))); box-shadow:0 10px 24px -10px rgb(var(--brand)/0.8); }}
-  .btn.primary:hover {{ filter:brightness(1.06); }}
+  .btn {{ display:inline-flex; align-items:center; gap:8px; padding:11px 20px; border-radius:10px; font-size:15px; font-weight:600; text-decoration:none; cursor:pointer; }}
+  .btn.primary {{ color:rgb(var(--signal-ink)); background:linear-gradient(135deg,rgb(var(--signal)),rgb(var(--signal-2))); box-shadow:0 10px 26px -12px rgb(var(--signal)/0.9); }}
+  .btn.primary:hover {{ filter:brightness(1.06); text-decoration:none; }}
   .btn.ghost {{ color:rgb(var(--ink-soft)); background:rgb(var(--panel)); border:1px solid rgb(var(--border)); }}
-  .btn.ghost:hover {{ border-color:rgb(var(--brand)/0.5); }}
-  .card {{ margin-top:34px; border-radius:18px; border:1px solid rgb(var(--border)); background:rgb(var(--panel)/0.85); box-shadow:0 1px 2px rgb(var(--shadow)/0.04),0 18px 40px -24px rgb(var(--shadow)/0.28); overflow:hidden; }}
-  .headline-top {{ display:flex; flex-wrap:wrap; align-items:center; gap:14px; padding:20px 24px; border-left:5px solid {accent}; }}
-  .headline-icon {{ display:grid; place-items:center; height:46px; width:46px; border-radius:12px; flex-shrink:0; color:{accent}; background:{accent}1f; }}
-  .headline-text {{ flex:1; min-width:0; }}
-  .headline-text .big {{ font-size:23px; font-weight:700; letter-spacing:-0.01em; color:rgb(var(--ink)); }}
-  .headline-text .big em {{ font-style:normal; color:{accent}; }}
-  .headline-text .sub {{ font-size:14px; color:rgb(var(--muted)); margin-top:3px; }}
-  .verdict {{ margin-left:auto; padding:8px 15px; border-radius:10px; font-size:13px; font-weight:700; color:#fff; background:{verdict_bg}; white-space:nowrap; }}
-  .dash {{ display:grid; grid-template-columns:200px 1fr; gap:24px; align-items:center; padding:24px; border-top:1px solid rgb(var(--border)); }}
-  .donut {{ position:relative; height:170px; width:170px; border-radius:999px; margin:0 auto; background:{result_gradient}; }}
-  .donut::after {{ content:""; position:absolute; inset:23px; border-radius:999px; background:rgb(var(--panel)); }}
+  .btn.ghost:hover {{ border-color:rgb(var(--signal)/0.5); color:rgb(var(--ink)); text-decoration:none; }}
+  .verdict-bar {{ margin-top:34px; border-radius:14px; overflow:hidden; border:1px solid rgb(var(--border)); background:rgb(var(--panel)/0.92); box-shadow:0 1px 2px rgb(var(--shadow)/0.3),0 22px 50px -30px rgb(var(--shadow)/0.7); }}
+  .verdict-top {{ display:flex; flex-wrap:wrap; align-items:center; gap:15px; padding:18px 22px; border-left:4px solid {accent}; }}
+  .verdict-icon {{ display:grid; place-items:center; height:46px; width:46px; border-radius:11px; flex-shrink:0; color:{accent}; background:{accent}24; border:1px solid {accent}4d; }}
+  .verdict-text {{ flex:1; min-width:0; }}
+  .verdict-text .big {{ font-size:20px; font-weight:750; letter-spacing:-0.01em; color:rgb(var(--ink)); }}
+  .verdict-text .big em {{ font-style:normal; color:{accent}; }}
+  .verdict-text .sub {{ font-size:13px; color:rgb(var(--ink-soft)); margin-top:3px; }}
+  .verdict-flag {{ margin-left:auto; display:inline-flex; align-items:center; gap:8px; padding:8px 14px; border-radius:9px; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap; font-family:"JetBrains Mono",ui-monospace,monospace; color:{verdict_ink}; background:{verdict_bg}; }}
+  .verdict-flag .pulse {{ height:7px; width:7px; border-radius:999px; background:currentColor; opacity:.9; }}
+  .bento {{ display:grid; grid-template-columns:210px 1fr; grid-template-areas:"donut tiles" "donut bars"; gap:14px; margin-top:34px; }}
+  .bento-cell {{ border-radius:14px; border:1px solid rgb(var(--border)); background:rgb(var(--panel)/0.92); box-shadow:0 1px 2px rgb(var(--shadow)/0.25),0 16px 40px -30px rgb(var(--shadow)/0.55); }}
+  .cell-donut {{ grid-area:donut; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:22px 16px; }}
+  .cell-tiles {{ grid-area:tiles; }}
+  .cell-bars {{ grid-area:bars; padding:18px 20px; }}
+  .donut {{ position:relative; height:166px; width:166px; border-radius:999px; background:{result_gradient}; box-shadow:inset 0 0 0 1px rgb(var(--border)); }}
+  .donut::after {{ content:""; position:absolute; inset:23px; border-radius:999px; background:rgb(var(--panel)); box-shadow:inset 0 0 0 1px rgb(var(--border)/0.6); }}
   .donut-center {{ position:absolute; inset:0; display:grid; place-content:center; text-align:center; z-index:1; }}
-  .donut-center .n {{ font-size:38px; font-weight:800; line-height:1; color:rgb(var(--ink)); }}
-  .donut-center .l {{ font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.07em; color:rgb(var(--muted)); margin-top:4px; }}
-  .donut-empty {{ position:absolute; inset:0; border-radius:999px; border:15px solid rgb(var(--pass)/0.25); }}
-  .bars {{ display:flex; flex-direction:column; gap:14px; }}
-  .bar-row {{ display:grid; grid-template-columns:86px 1fr 26px; gap:12px; align-items:center; }}
-  .bname {{ font-size:13px; font-weight:600; display:flex; align-items:center; gap:8px; color:rgb(var(--ink-soft)); }}
-  .sw {{ height:9px; width:9px; border-radius:3px; }}
-  .track {{ height:9px; border-radius:999px; background:rgb(var(--border)/0.8); overflow:hidden; }}
+  .donut-center .n {{ font-size:38px; font-weight:800; line-height:1; color:rgb(var(--ink)); font-family:"JetBrains Mono",ui-monospace,monospace; }}
+  .donut-center .l {{ font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.14em; color:rgb(var(--muted)); margin-top:5px; }}
+  .donut-empty {{ position:absolute; inset:0; border-radius:999px; border:15px solid rgb(var(--pass)/0.28); }}
+  .donut-cap {{ font-family:"JetBrains Mono",ui-monospace,monospace; font-size:11px; color:rgb(var(--muted)); }}
+  .donut-cap b {{ color:rgb(var(--ink-soft)); }}
+  .tiles {{ display:grid; grid-template-columns:repeat(4,1fr); height:100%; }}
+  .tile {{ position:relative; padding:16px 16px 15px; border-right:1px solid rgb(var(--border)); display:flex; flex-direction:column; gap:8px; min-width:0; }}
+  .tile:last-child {{ border-right:0; }}
+  .tile::before {{ content:""; position:absolute; left:0; top:0; height:100%; width:3px; background:var(--t); }}
+  .tile .tlabel {{ display:flex; align-items:center; gap:7px; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:rgb(var(--ink-soft)); font-family:"JetBrains Mono",ui-monospace,monospace; }}
+  .tile .tdot {{ height:8px; width:8px; border-radius:2px; background:var(--t); flex-shrink:0; }}
+  .tile .tnum {{ font-size:28px; font-weight:800; line-height:1; color:rgb(var(--ink)); font-family:"JetBrains Mono",ui-monospace,monospace; }}
+  .tile.zero .tnum {{ color:rgb(var(--muted)); }}
+  .tile .tnum.hit {{ color:var(--t); }}
+  .tile .tbar {{ height:4px; border-radius:999px; background:rgb(var(--border)); overflow:hidden; margin-top:auto; }}
+  .tile .tbar>span {{ display:block; height:100%; background:var(--t); }}
+  .bars-head {{ font-family:"JetBrains Mono",ui-monospace,monospace; font-size:10px; text-transform:uppercase; letter-spacing:0.12em; color:rgb(var(--muted)); margin-bottom:14px; }}
+  .bars {{ display:flex; flex-direction:column; gap:12px; }}
+  .bar-row {{ display:grid; grid-template-columns:74px 1fr 30px; gap:12px; align-items:center; }}
+  .bname {{ font-size:12px; font-weight:600; display:flex; align-items:center; gap:7px; color:rgb(var(--ink-soft)); font-family:"JetBrains Mono",ui-monospace,monospace; }}
+  .sw {{ height:8px; width:8px; border-radius:2px; }}
+  .track {{ height:8px; border-radius:999px; background:rgb(var(--bg-2)); border:1px solid rgb(var(--border)); overflow:hidden; }}
   .track>span {{ display:block; height:100%; border-radius:999px; }}
-  .bct {{ font-size:13px; font-weight:700; text-align:right; color:rgb(var(--ink)); }}
-  .strip {{ display:grid; grid-template-columns:repeat(3,1fr); border-top:1px solid rgb(var(--border)); }}
-  .stat {{ padding:16px; text-align:center; border-right:1px solid rgb(var(--border)); }}
-  .stat:last-child {{ border-right:0; }}
-  .stat .n {{ font-size:22px; font-weight:800; color:rgb(var(--ink)); }}
-  .stat .n.good {{ color:rgb(var(--pass)); }}
-  .stat .l {{ font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:rgb(var(--muted)); margin-top:6px; }}
-  .downloads {{ margin-top:30px; }}
-  .downloads h2 {{ font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.09em; color:rgb(var(--muted)); margin:0 0 14px; }}
-  .dl-grid {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px; }}
-  .dl {{ display:flex; align-items:center; gap:12px; padding:14px 16px; border-radius:13px; border:1px solid rgb(var(--border)); background:rgb(var(--panel)/0.85); text-decoration:none; color:rgb(var(--ink)); }}
-  .dl:hover {{ border-color:rgb(var(--brand)/0.5); }}
-  .dl .ic {{ display:grid; place-items:center; height:38px; width:38px; border-radius:10px; color:rgb(var(--brand)); background:rgb(var(--brand)/0.10); flex-shrink:0; }}
+  .bct {{ font-size:13px; font-weight:700; text-align:right; color:rgb(var(--ink)); font-family:"JetBrains Mono",ui-monospace,monospace; }}
+  .telemetry {{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:14px; }}
+  .metric {{ border-radius:12px; border:1px solid rgb(var(--border)); background:rgb(var(--panel)/0.92); padding:15px 16px; }}
+  .metric .mk {{ font-family:"JetBrains Mono",ui-monospace,monospace; font-size:10px; text-transform:uppercase; letter-spacing:0.1em; color:rgb(var(--muted)); }}
+  .metric .mv {{ font-size:24px; font-weight:800; color:rgb(var(--ink)); margin-top:7px; font-family:"JetBrains Mono",ui-monospace,monospace; line-height:1; }}
+  .metric .mv.good {{ color:rgb(var(--pass)); }}
+  .metric .mv.bad {{ color:{accent}; }}
+  .metric .ms {{ font-size:11px; color:rgb(var(--muted)); margin-top:6px; }}
+  .downloads {{ margin-top:44px; }}
+  .downloads h2 {{ font-family:"JetBrains Mono",ui-monospace,monospace; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.14em; color:rgb(var(--ink-soft)); margin:0 0 16px; display:flex; align-items:center; gap:11px; }}
+  .downloads h2 .idx {{ color:rgb(var(--signal)); }}
+  .downloads h2::after {{ content:""; flex:1; height:1px; background:linear-gradient(90deg,rgb(var(--border)),transparent); }}
+  .dl-grid {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(215px,1fr)); gap:12px; }}
+  .dl {{ display:flex; align-items:center; gap:12px; padding:14px 16px; border-radius:12px; border:1px solid rgb(var(--border)); background:rgb(var(--panel)/0.92); text-decoration:none; color:rgb(var(--ink)); }}
+  .dl:hover {{ border-color:rgb(var(--signal)/0.5); text-decoration:none; }}
+  .dl .ic {{ display:grid; place-items:center; height:38px; width:38px; border-radius:9px; color:rgb(var(--signal)); background:rgb(var(--signal)/0.10); border:1px solid rgb(var(--signal)/0.24); flex-shrink:0; }}
   .dl b {{ display:block; font-size:14px; }}
-  .dl span {{ font-size:12px; color:rgb(var(--muted)); }}
-  footer.site {{ margin-top:48px; border-top:1px solid rgb(var(--border)); }}
-  .footer-inner {{ max-width:920px; margin:0 auto; padding:24px 20px; display:flex; flex-wrap:wrap; gap:12px; justify-content:space-between; font-size:13px; color:rgb(var(--muted)); }}
+  .dl span {{ font-size:11.5px; color:rgb(var(--muted)); font-family:"JetBrains Mono",ui-monospace,monospace; }}
+  footer.console {{ margin-top:50px; border-top:1px solid rgb(var(--border)); }}
+  .footer-inner {{ max-width:960px; margin:0 auto; padding:26px 22px; display:flex; flex-wrap:wrap; gap:12px; justify-content:space-between; font-size:12.5px; color:rgb(var(--muted)); font-family:"JetBrains Mono",ui-monospace,monospace; }}
   .footer-inner a {{ font-weight:600; text-decoration:none; }}
-  @media (max-width:680px) {{ .dash {{ grid-template-columns:1fr; }} h1 {{ font-size:30px; }} .verdict {{ margin-left:0; }} }}
+  .footer-inner b {{ color:rgb(var(--ink-soft)); font-weight:600; }}
+  @media (max-width:780px) {{ .bento {{ grid-template-columns:1fr; grid-template-areas:"donut" "tiles" "bars"; }} .telemetry {{ grid-template-columns:repeat(2,1fr); }} }}
+  @media (max-width:520px) {{ h1 {{ font-size:29px; }} .tiles {{ grid-template-columns:repeat(2,1fr); }} .tile:nth-child(2) {{ border-right:0; }} .tile:nth-child(1),.tile:nth-child(2) {{ border-bottom:1px solid rgb(var(--border)); }} .telemetry {{ grid-template-columns:1fr; }} .verdict-flag {{ margin-left:0; order:3; }} }}
 </style>
 <script>
   (function () {{
     try {{
       var s = localStorage.getItem("llmscan-theme");
-      var d = s ? s === "dark" : (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      var d = s ? s === "dark" : true;
       document.documentElement.classList.toggle("dark", !!d);
     }} catch (e) {{}}
   }})();
@@ -249,13 +302,15 @@ def _landing_html(result: ScanResult) -> str:
 </script>
 </head>
 <body>
-<header class="site">
-  <div class="site-inner">
+<header class="console">
+  <div class="console-inner">
     <a class="brand" href="/">
       <span class="brand-mark"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></span>
-      <span class="brand-name"><b>LLM Security <span class="grad-text">Scanner</span></b><span>Adversarial assessment &amp; governance</span></span>
+      <span class="brand-name"><b>LLM Security <span class="signal-text">Console</span></b><span>Adversarial Scanner</span></span>
     </a>
-    <button type="button" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode">
+    <span class="spacer"></span>
+    <span class="scan-pill"><span class="live"></span> scan complete</span>
+    <button type="button" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
       <svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
       <svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
     </button>
@@ -264,53 +319,63 @@ def _landing_html(result: ScanResult) -> str:
 
 <div class="wrap">
   <section class="hero">
-    <span class="eyebrow"><span class="dot"></span> Live demo · offline, no API key</span>
-    <h1>Security-test any LLM, get an <span class="grad-text">audit-ready</span> report.</h1>
-    <p class="lede">An extensible adversarial probe battery (prompt injection, jailbreaks, secret leakage, indirect/RAG injection) with a NIST AI RMF / ISO 42001 governance package generated from the same run.</p>
+    <span class="kicker"><span class="dot"></span> Live demo · offline, no API key</span>
+    <h1>Security-test any LLM. Ship the <span class="signal-text">audit evidence</span>.</h1>
+    <p class="lede">An extensible adversarial probe battery — prompt injection, jailbreaks, secret leakage, indirect/RAG injection — with a NIST AI RMF / ISO 42001 governance package generated from the same run.</p>
     <div class="cta">
       <a class="btn primary" href="/report">
-        View the full report
+        Open the full report
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
       </a>
       <a class="btn ghost" href="https://github.com/LaelaZorana/llm-security-scanner" target="_blank" rel="noopener">View on GitHub</a>
     </div>
   </section>
 
-  <div class="card">
-    <div class="headline-top">
-      <span class="headline-icon">{headline_icon}</span>
-      <div class="headline-text">
+  <div class="verdict-bar">
+    <div class="verdict-top">
+      <span class="verdict-icon">{headline_icon}</span>
+      <div class="verdict-text">
         <div class="big">Found <em>{result.total_findings}</em> finding{plural}{crit_clause}{high_clause}</div>
-        <div class="sub">Target <b>{result.target}</b> · {result.total_probes} probes · {pass_pct}% pass rate · highest severity {headline_severity}</div>
+        <div class="sub">Target <b class="mono">{result.target}</b> · {result.total_probes} probes · {pass_pct}% pass rate · highest severity {headline_severity}</div>
       </div>
-      <span class="verdict">{verdict}</span>
-    </div>
-    <div class="dash">
-      <div>
-        <div class="donut" role="img" aria-label="Findings by severity">
-          {donut_empty}
-          <div class="donut-center"><div class="n">{result.total_findings}</div><div class="l">Finding{plural}</div></div>
-        </div>
-      </div>
-      <div class="bars">{bars}</div>
-    </div>
-    <div class="strip">
-      <div class="stat"><div class="n">{result.total_probes}</div><div class="l">Probes run</div></div>
-      <div class="stat"><div class="n good">{pass_pct}%</div><div class="l">Pass rate</div></div>
-      <div class="stat"><div class="n">{n_categories}</div><div class="l">Categories</div></div>
+      <span class="verdict-flag"><span class="pulse"></span> {verdict}</span>
     </div>
   </div>
 
+  <div class="bento">
+    <div class="bento-cell cell-donut">
+      <div class="donut" role="img" aria-label="Findings by severity">
+        {donut_empty}
+        <div class="donut-center"><div class="n">{result.total_findings}</div><div class="l">Finding{plural}</div></div>
+      </div>
+      <div class="donut-cap">across <b>{n_categories}</b> categories</div>
+    </div>
+    <div class="bento-cell cell-tiles">
+      <div class="tiles">{tiles}</div>
+    </div>
+    <div class="bento-cell cell-bars">
+      <div class="bars-head">Distribution</div>
+      <div class="bars">{bars}</div>
+    </div>
+  </div>
+
+  <div class="telemetry">
+    <div class="metric"><div class="mk">Probes run</div><div class="mv">{result.total_probes}</div><div class="ms">adversarial test cases</div></div>
+    <div class="metric"><div class="mk">Pass rate</div><div class="mv good">{pass_pct}%</div><div class="ms">probes handled safely</div></div>
+    <div class="metric"><div class="mk">Findings</div><div class="mv {findings_cls}">{result.total_findings}</div><div class="ms">vulnerabilities surfaced</div></div>
+    <div class="metric"><div class="mk">Highest severity</div><div class="mv {sev_cls}">{headline_severity}</div><div class="ms">drives the verdict</div></div>
+  </div>
+
   <section class="downloads">
-    <h2>Governance package</h2>
+    <h2><span class="idx">&gt;_</span> Governance package</h2>
     <div class="dl-grid">
       <a class="dl" href="/report">
         <span class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>
-        <span><b>report.html</b><span>Self-contained findings report</span></span>
+        <span><b>report.html</b><span>self-contained findings</span></span>
       </a>
       <a class="dl" href="/report.json">
         <span class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></span>
-        <span><b>report.json</b><span>Machine-readable findings</span></span>
+        <span><b>report.json</b><span>machine-readable</span></span>
       </a>
       <a class="dl" href="/model_card.md">
         <span class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span>
@@ -318,15 +383,15 @@ def _landing_html(result: ScanResult) -> str:
       </a>
       <a class="dl" href="/risk_register.csv">
         <span class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg></span>
-        <span><b>risk_register.csv</b><span>GRC-ready risk register</span></span>
+        <span><b>risk_register.csv</b><span>GRC-ready register</span></span>
       </a>
     </div>
   </section>
 </div>
 
-<footer class="site">
+<footer class="console">
   <div class="footer-inner">
-    <span>Built by <b style="color:rgb(var(--ink-soft))">Laela Zorana</b> · LLM Security Scanner v{__version__}</span>
+    <span>Built by <b>Laela Zorana</b> · LLM Security Scanner v{__version__}</span>
     <a href="https://github.com/LaelaZorana/llm-security-scanner" target="_blank" rel="noopener">GitHub</a>
   </div>
 </footer>

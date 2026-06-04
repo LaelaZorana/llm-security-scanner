@@ -1,62 +1,89 @@
 <!DOCTYPE html>
 {#
-  report.html.j2 — the self-contained, recruiter-grade scan report.
+  report.html.j2 — the self-contained ENTERPRISE SECURITY CONSOLE report.
+
+  Identity: a dark-first technical security console (think Snyk / Semgrep /
+  Lakera dashboards). Near-black slate canvas, a cyan→emerald "scanner signal"
+  brand accent, monospace for every machine artifact (target, probe IDs,
+  detectors, evidence), and severity as the dominant colour language
+  (Critical → High → Medium → Low). A bento severity dashboard up top, console
+  finding cards, a threat-coverage matrix and an OWASP / NIST AI RMF / ISO 42001
+  compliance report-card.
 
   Hard constraint: this file must render to a SINGLE, fully self-contained HTML
   document with NO external assets — no <link> and no src= references — so it can
   be emailed or attached to an audit as-is (and so the offline test suite stays
   green). All styling is inline in the <style> block below; the only script is a
-  tiny inline theme toggle. Brand language mirrors the rest of the portfolio
-  (ParaPilot): indigo/violet accent, Inter/system sans, slate neutrals,
-  rounded-xl cards, soft shadows, light + dark.
+  tiny inline theme toggle.
 
   Autoescaping is ON, so attacker-controlled model output (probe responses) is
   always escaped and can never inject markup into the report.
 #}
 {% set hs = result.highest_severity() %}
 {% set sc = result.severity_counts() %}
-<html lang="en" class="">
+{% set worst = (hs.name|lower) if hs else 'ok' %}
+<html lang="en" class="dark">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>LLM Security Scan Report — {{ result.target }}</title>
-<meta name="description" content="Automated LLM adversarial security assessment and NIST AI RMF / ISO 42001 governance package." />
+<title>LLM Security Scan Report · {{ result.target }}</title>
+<meta name="description" content="Automated LLM adversarial security assessment — findings mapped to the OWASP LLM Top 10, NIST AI RMF and ISO/IEC 42001." />
 <style>
+  /* ===================== Design tokens ===================== *
+   * Dark-first enterprise security console. Light is a secondary option.
+   * Colours are space-separated RGB triples so they compose with /alpha.   */
   :root {
-    /* Brand (indigo/violet) + slate neutrals — light theme */
-    --brand: 79 70 229;        /* indigo-600 */
-    --brand-2: 139 92 246;     /* violet-500 */
-    --bg: 248 250 252;         /* slate-50  */
-    --bg-grad-1: 99 102 241;   /* indigo-500 */
+    color-scheme: dark;
+    /* Scanner signal accent: cyan -> emerald */
+    --signal: 45 212 191;        /* teal-400  */
+    --signal-2: 56 189 248;      /* sky-400   */
+    --signal-ink: 8 18 24;
+
+    /* Console canvas (dark) */
+    --bg: 7 10 17;               /* near-black slate */
+    --bg-2: 10 14 23;
+    --grid: 148 163 184;         /* hairline grid ink */
+    --panel: 15 20 31;           /* graphite panel */
+    --panel-2: 19 25 38;         /* raised panel */
+    --panel-3: 24 31 47;
+    --ink: 226 232 240;          /* slate-200 */
+    --ink-soft: 148 163 184;     /* slate-400 */
+    --muted: 100 116 139;        /* slate-500 */
+    --border: 38 48 66;          /* slate-ish hairline */
+    --border-2: 51 65 85;
+    --shadow: 0 0 0;
+
+    /* Severity system (Critical -> Low) + secure/pass */
+    --critical: 244 63 94;       /* rose-500  */
+    --high: 249 115 22;          /* orange-500*/
+    --medium: 245 158 11;        /* amber-500 */
+    --low: 234 179 8;            /* yellow-500*/
+    --info: 100 116 139;         /* slate-500 */
+    --pass: 52 211 153;          /* emerald-400 */
+  }
+  html:not(.dark) {
+    color-scheme: light;
+    --signal: 13 148 136;        /* teal-600  */
+    --signal-2: 2 132 199;       /* sky-600   */
+    --signal-ink: 255 255 255;
+    --bg: 244 247 251;
+    --bg-2: 237 242 248;
+    --grid: 100 116 139;
     --panel: 255 255 255;
     --panel-2: 248 250 252;
-    --ink: 15 23 42;           /* slate-900 */
-    --ink-soft: 51 65 85;      /* slate-700 */
-    --muted: 100 116 139;      /* slate-500 */
-    --border: 226 232 240;     /* slate-200 */
+    --panel-3: 241 245 249;
+    --ink: 15 23 42;             /* slate-900 */
+    --ink-soft: 51 65 85;        /* slate-700 */
+    --muted: 100 116 139;
+    --border: 226 232 240;
+    --border-2: 203 213 225;
     --shadow: 15 23 42;
-    /* Semantic severities */
-    --critical: 220 38 38;     /* red-600   */
-    --high: 234 88 12;         /* orange-600*/
-    --medium: 217 119 6;       /* amber-600 */
-    --low: 13 148 136;         /* teal-600  */
-    --pass: 22 163 74;         /* green-600 */
-  }
-  html.dark {
-    --bg: 2 6 23;              /* slate-950 */
-    --bg-grad-1: 99 102 241;
-    --panel: 15 23 42;         /* slate-900 */
-    --panel-2: 30 41 59;       /* slate-800 */
-    --ink: 241 245 249;        /* slate-100 */
-    --ink-soft: 203 213 225;   /* slate-300 */
-    --muted: 148 163 184;      /* slate-400 */
-    --border: 51 65 85;        /* slate-700 */
-    --shadow: 0 0 0;
-    --critical: 248 113 113;   /* red-400   */
-    --high: 251 146 60;        /* orange-400*/
-    --medium: 251 191 36;      /* amber-400 */
-    --low: 45 212 191;         /* teal-400  */
-    --pass: 74 222 128;        /* green-400 */
+    --critical: 220 38 38;       /* red-600   */
+    --high: 234 88 12;           /* orange-600*/
+    --medium: 217 119 6;         /* amber-600 */
+    --low: 202 138 4;            /* yellow-600*/
+    --info: 100 116 139;
+    --pass: 5 150 105;           /* emerald-600 */
   }
 
   * { box-sizing: border-box; }
@@ -65,310 +92,403 @@
     margin: 0;
     color: rgb(var(--ink));
     background-color: rgb(var(--bg));
+    /* Faint console grid + a corner glow from the signal accent. */
     background-image:
-      radial-gradient(48rem 48rem at 110% -10%, rgb(var(--brand-2) / 0.12), transparent 55%),
-      radial-gradient(42rem 42rem at -10% 0%, rgb(var(--bg-grad-1) / 0.12), transparent 50%);
+      radial-gradient(50rem 36rem at 100% -8%, rgb(var(--signal) / 0.10), transparent 60%),
+      radial-gradient(46rem 36rem at -8% -6%, rgb(var(--signal-2) / 0.08), transparent 55%),
+      linear-gradient(rgb(var(--grid) / 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--grid) / 0.035) 1px, transparent 1px);
+    background-size: auto, auto, 44px 44px, 44px 44px;
     background-attachment: fixed;
-    font: 15px/1.6 "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    font: 14.5px/1.6 "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
       "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
-  a { color: rgb(var(--brand)); }
-  .wrap { max-width: 1060px; margin: 0 auto; padding: 0 20px 96px; }
+  a { color: rgb(var(--signal)); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .mono { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 22px 110px; }
 
-  /* ---------- Header ---------- */
-  header.site {
+  /* ===================== Top bar ===================== */
+  header.console {
     position: sticky; top: 0; z-index: 30;
-    border-bottom: 1px solid rgb(var(--border) / 0.7);
-    background: rgb(var(--panel) / 0.72);
-    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgb(var(--border));
+    background: rgb(var(--bg) / 0.82);
+    backdrop-filter: blur(12px) saturate(1.2);
   }
-  .site-inner {
-    max-width: 1060px; margin: 0 auto; padding: 0 20px;
-    height: 60px; display: flex; align-items: center; justify-content: space-between;
+  .console-inner {
+    max-width: 1120px; margin: 0 auto; padding: 0 22px;
+    height: 58px; display: flex; align-items: center; gap: 14px;
   }
-  .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+  .brand { display: flex; align-items: center; gap: 11px; text-decoration: none; }
   .brand-mark {
-    display: grid; place-items: center; height: 34px; width: 34px; border-radius: 10px;
-    color: #fff; background: linear-gradient(135deg, rgb(var(--brand)), rgb(var(--brand-2)));
-    box-shadow: 0 6px 16px -6px rgb(var(--brand) / 0.7);
+    position: relative; display: grid; place-items: center; height: 34px; width: 34px;
+    border-radius: 9px; color: rgb(var(--signal-ink));
+    background: linear-gradient(140deg, rgb(var(--signal)), rgb(var(--signal-2)));
+    box-shadow: 0 0 0 1px rgb(var(--signal) / 0.35), 0 8px 22px -10px rgb(var(--signal) / 0.8);
   }
-  .brand-name { display: flex; flex-direction: column; line-height: 1.05; }
-  .brand-name b { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; color: rgb(var(--ink)); }
-  .brand-name span { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: rgb(var(--muted)); }
-  .grad-text {
-    background-image: linear-gradient(100deg, rgb(var(--brand)), rgb(var(--brand-2)));
+  .brand-name { display: flex; flex-direction: column; line-height: 1.1; }
+  .brand-name b { font-size: 14px; font-weight: 700; letter-spacing: 0.01em; color: rgb(var(--ink)); }
+  .brand-name span {
+    font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.16em;
+    color: rgb(var(--muted));
+  }
+  .signal-text {
+    background-image: linear-gradient(100deg, rgb(var(--signal)), rgb(var(--signal-2)));
     -webkit-background-clip: text; background-clip: text; color: transparent;
   }
-  .theme-toggle {
-    display: grid; place-items: center; height: 36px; width: 36px; border-radius: 9px;
-    border: 1px solid rgb(var(--border)); background: rgb(var(--panel)); color: rgb(var(--muted));
-    cursor: pointer; transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+  .topbar-spacer { flex: 1; }
+  .scan-pill {
+    display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px; border-radius: 8px;
+    font-size: 11.5px; font-weight: 600;
+    color: rgb(var(--ink-soft)); background: rgb(var(--panel-2));
+    border: 1px solid rgb(var(--border));
   }
-  .theme-toggle:hover { color: rgb(var(--ink)); border-color: rgb(var(--brand) / 0.5); }
-  .theme-toggle:focus-visible { outline: none; box-shadow: 0 0 0 3px rgb(var(--brand) / 0.4); }
+  .scan-pill .live {
+    height: 7px; width: 7px; border-radius: 999px; background: rgb(var(--pass));
+    box-shadow: 0 0 0 3px rgb(var(--pass) / 0.18);
+  }
+  @media (max-width: 640px) { .scan-pill { display: none; } }
+  .theme-toggle {
+    display: grid; place-items: center; height: 36px; width: 36px; border-radius: 8px;
+    border: 1px solid rgb(var(--border)); background: rgb(var(--panel)); color: rgb(var(--muted));
+    cursor: pointer; transition: color .15s ease, border-color .15s ease;
+  }
+  .theme-toggle:hover { color: rgb(var(--signal)); border-color: rgb(var(--signal) / 0.5); }
+  .theme-toggle:focus-visible { outline: none; box-shadow: 0 0 0 3px rgb(var(--signal) / 0.4); }
   .icon-sun, .icon-moon { height: 18px; width: 18px; }
   html:not(.dark) .icon-moon { display: none; }
   html.dark .icon-sun { display: none; }
 
-  /* ---------- Hero / headline ---------- */
-  .hero { padding: 38px 0 8px; }
-  .eyebrow {
-    display: inline-flex; align-items: center; gap: 7px; padding: 4px 12px; border-radius: 999px;
-    font-size: 12px; font-weight: 600;
-    color: rgb(var(--brand)); background: rgb(var(--brand) / 0.10);
-    border: 1px solid rgb(var(--brand) / 0.20);
+  /* ===================== Command header ===================== */
+  .hero { padding: 34px 0 6px; }
+  .kicker {
+    display: inline-flex; align-items: center; gap: 8px; font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+    color: rgb(var(--signal)); background: rgb(var(--signal) / 0.10);
+    border: 1px solid rgb(var(--signal) / 0.28); padding: 5px 11px; border-radius: 7px;
   }
-  .eyebrow .dot { height: 6px; width: 6px; border-radius: 999px; background: rgb(var(--brand)); }
-  .hero h1 { font-size: 30px; line-height: 1.15; letter-spacing: -0.02em; margin: 14px 0 6px; }
-  .hero .lede { color: rgb(var(--muted)); max-width: 60ch; margin: 0; }
+  .kicker .dot { height: 6px; width: 6px; border-radius: 999px; background: rgb(var(--signal)); }
+  .hero h1 {
+    font-size: 30px; line-height: 1.12; letter-spacing: -0.02em; margin: 16px 0 8px; font-weight: 750;
+  }
+  .hero .lede { color: rgb(var(--ink-soft)); max-width: 66ch; margin: 0; font-size: 15px; }
 
-  .headline {
-    margin-top: 22px; border-radius: 16px; overflow: hidden;
+  /* ===================== Verdict bar ===================== */
+  .verdict-bar {
+    margin-top: 22px; border-radius: 14px; overflow: hidden;
     border: 1px solid rgb(var(--border));
-    background: rgb(var(--panel) / 0.85);
-    box-shadow: 0 1px 2px rgb(var(--shadow) / 0.04), 0 18px 40px -24px rgb(var(--shadow) / 0.28);
+    background:
+      linear-gradient(rgb(var(--panel) / 0.92), rgb(var(--panel) / 0.92)),
+      linear-gradient(90deg, rgb(var(--sev-rgb) / 0.16), transparent 38%);
+    box-shadow: 0 1px 2px rgb(var(--shadow) / 0.3), 0 22px 50px -30px rgb(var(--shadow) / 0.7);
   }
-  .headline-top {
-    display: flex; flex-wrap: wrap; align-items: center; gap: 14px;
-    padding: 18px 22px;
-    border-left: 5px solid rgb(var(--{{ (hs.name|lower) if hs else 'pass' }}));
+  .verdict-top {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 15px; padding: 18px 22px;
+    border-left: 4px solid rgb(var(--sev-rgb));
   }
-  .headline-icon {
-    display: grid; place-items: center; height: 44px; width: 44px; border-radius: 12px; flex-shrink: 0;
-    color: rgb(var(--{{ (hs.name|lower) if hs else 'pass' }}));
-    background: rgb(var(--{{ (hs.name|lower) if hs else 'pass' }}) / 0.12);
+  .verdict-icon {
+    display: grid; place-items: center; height: 46px; width: 46px; border-radius: 11px; flex-shrink: 0;
+    color: rgb(var(--sev-rgb)); background: rgb(var(--sev-rgb) / 0.14);
+    border: 1px solid rgb(var(--sev-rgb) / 0.3);
   }
-  .headline-text { min-width: 0; flex: 1; }
-  .headline-text .big {
-    font-size: 21px; font-weight: 700; letter-spacing: -0.01em; color: rgb(var(--ink));
+  .verdict-text { min-width: 0; flex: 1; }
+  .verdict-text .big { font-size: 20px; font-weight: 750; letter-spacing: -0.01em; color: rgb(var(--ink)); }
+  .verdict-text .big em { font-style: normal; color: rgb(var(--sev-rgb)); }
+  .verdict-text .sub { font-size: 13px; color: rgb(var(--ink-soft)); margin-top: 3px; }
+  .verdict-flag {
+    margin-left: auto; display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 14px; border-radius: 9px; font-size: 12px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    color: rgb(var(--sev-ink)); background: rgb(var(--sev-rgb));
   }
-  .headline-text .big em { font-style: normal; color: rgb(var(--{{ (hs.name|lower) if hs else 'pass' }})); }
-  .headline-text .sub { font-size: 13.5px; color: rgb(var(--muted)); margin-top: 2px; }
-  .verdict {
-    margin-left: auto; padding: 7px 14px; border-radius: 10px; font-size: 13px; font-weight: 700;
-    white-space: nowrap;
+  .verdict-flag .pulse { height: 7px; width: 7px; border-radius: 999px; background: currentColor; opacity: .9; }
+  .runmeta {
+    display: flex; flex-wrap: wrap; gap: 0; border-top: 1px solid rgb(var(--border));
+    font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 12px;
   }
-  .verdict.block { color: #fff; background: rgb(var(--critical)); }
-  .verdict.warn { color: #fff; background: rgb(var(--high)); }
-  .verdict.ok { color: #fff; background: rgb(var(--pass)); }
+  .runmeta .cell {
+    flex: 1 1 160px; padding: 11px 18px; border-right: 1px solid rgb(var(--border));
+  }
+  .runmeta .cell:last-child { border-right: 0; }
+  .runmeta .k { color: rgb(var(--muted)); font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; }
+  .runmeta .v { color: rgb(var(--ink)); margin-top: 3px; word-break: break-all; }
 
-  .meta {
-    display: flex; flex-wrap: wrap; gap: 6px 26px; padding: 13px 22px;
-    border-top: 1px solid rgb(var(--border)); font-size: 12.5px; color: rgb(var(--muted));
-  }
-  .meta b { color: rgb(var(--ink-soft)); font-weight: 600; }
-  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-
-  /* ---------- Section scaffolding ---------- */
-  section.block { margin-top: 40px; }
+  /* ===================== Section scaffolding ===================== */
+  section.block { margin-top: 44px; }
   h2.sec {
-    font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em;
-    color: rgb(var(--muted)); margin: 0 0 16px; display: flex; align-items: center; gap: 9px;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em;
+    color: rgb(var(--ink-soft)); margin: 0 0 16px; display: flex; align-items: center; gap: 11px;
   }
-  h2.sec::after { content: ""; flex: 1; height: 1px; background: rgb(var(--border)); }
+  h2.sec .idx { color: rgb(var(--signal)); }
+  h2.sec::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, rgb(var(--border)), transparent); }
 
-  .card {
-    border-radius: 16px; border: 1px solid rgb(var(--border));
-    background: rgb(var(--panel) / 0.85);
-    box-shadow: 0 1px 2px rgb(var(--shadow) / 0.04), 0 14px 34px -22px rgb(var(--shadow) / 0.22);
+  .panel {
+    border-radius: 14px; border: 1px solid rgb(var(--border));
+    background: rgb(var(--panel) / 0.92);
+    box-shadow: 0 1px 2px rgb(var(--shadow) / 0.25), 0 18px 44px -30px rgb(var(--shadow) / 0.6);
   }
 
-  /* ---------- Severity dashboard ---------- */
-  .dash { display: grid; grid-template-columns: minmax(0, 200px) minmax(0, 1fr); gap: 22px; align-items: center; padding: 22px; }
-  .donut-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  /* ===================== Bento severity dashboard ===================== */
+  .bento {
+    display: grid;
+    grid-template-columns: 232px 1fr;
+    grid-template-areas: "donut tiles" "donut bars";
+    gap: 16px;
+  }
+  .bento-cell {
+    border-radius: 14px; border: 1px solid rgb(var(--border));
+    background: rgb(var(--panel) / 0.92);
+    box-shadow: 0 1px 2px rgb(var(--shadow) / 0.25), 0 16px 40px -30px rgb(var(--shadow) / 0.55);
+  }
+  .cell-donut { grid-area: donut; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 24px 18px; }
+  .cell-tiles { grid-area: tiles; }
+  .cell-bars { grid-area: bars; padding: 18px 20px; }
+
+  /* Donut (CSS conic-gradient, no JS) */
   .donut {
-    position: relative; height: 160px; width: 160px; border-radius: 999px;
+    position: relative; height: 172px; width: 172px; border-radius: 999px;
     background: {{ donut_gradient }};
+    box-shadow: inset 0 0 0 1px rgb(var(--border));
   }
   .donut::after {
-    content: ""; position: absolute; inset: 22px; border-radius: 999px;
-    background: rgb(var(--panel));
+    content: ""; position: absolute; inset: 24px; border-radius: 999px;
+    background: rgb(var(--panel)); box-shadow: inset 0 0 0 1px rgb(var(--border) / 0.6);
   }
-  .donut-center {
-    position: absolute; inset: 0; display: grid; place-content: center; text-align: center; z-index: 1;
-  }
-  .donut-center .n { font-size: 34px; font-weight: 800; line-height: 1; color: rgb(var(--ink)); }
-  .donut-center .l { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: rgb(var(--muted)); margin-top: 3px; }
-  .donut-empty {
-    position: absolute; inset: 0; border-radius: 999px;
-    border: 14px solid rgb(var(--pass) / 0.25);
-  }
+  .donut-center { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; z-index: 1; }
+  .donut-center .n { font-size: 40px; font-weight: 800; line-height: 1; color: rgb(var(--ink)); font-family: "JetBrains Mono", ui-monospace, monospace; }
+  .donut-center .l { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; color: rgb(var(--muted)); margin-top: 6px; }
+  .donut-empty { position: absolute; inset: 0; border-radius: 999px; border: 15px solid rgb(var(--pass) / 0.28); }
+  .donut-cap { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 11px; color: rgb(var(--muted)); letter-spacing: 0.04em; }
+  .donut-cap b { color: rgb(var(--ink-soft)); }
 
-  .bars { display: flex; flex-direction: column; gap: 13px; }
-  .bar-row { display: grid; grid-template-columns: 86px 1fr 28px; gap: 12px; align-items: center; }
-  .bar-row .name { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; color: rgb(var(--ink-soft)); }
-  .bar-row .swatch { height: 9px; width: 9px; border-radius: 3px; flex-shrink: 0; }
-  .track { height: 9px; border-radius: 999px; background: rgb(var(--border) / 0.8); overflow: hidden; }
+  /* Severity stat tiles (the bento grid) */
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); height: 100%; }
+  .tile {
+    position: relative; padding: 16px 16px 15px; border-right: 1px solid rgb(var(--border));
+    display: flex; flex-direction: column; gap: 8px; min-width: 0;
+  }
+  .tile:last-child { border-right: 0; }
+  .tile::before { content: ""; position: absolute; left: 0; top: 0; height: 100%; width: 3px; background: rgb(var(--t-rgb)); }
+  .tile .tlabel {
+    display: flex; align-items: center; gap: 7px; font-size: 10.5px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.08em; color: rgb(var(--ink-soft));
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+  }
+  .tile .tdot { height: 8px; width: 8px; border-radius: 2px; background: rgb(var(--t-rgb)); flex-shrink: 0; }
+  .tile .tnum { font-size: 30px; font-weight: 800; line-height: 1; color: rgb(var(--ink)); font-family: "JetBrains Mono", ui-monospace, monospace; }
+  .tile.zero .tnum { color: rgb(var(--muted)); }
+  .tile .tnum.hit { color: rgb(var(--t-rgb)); }
+  .tile .tbar { height: 4px; border-radius: 999px; background: rgb(var(--border)); overflow: hidden; margin-top: auto; }
+  .tile .tbar > span { display: block; height: 100%; background: rgb(var(--t-rgb)); }
+
+  .t-critical { --t-rgb: var(--critical); }
+  .t-high { --t-rgb: var(--high); }
+  .t-medium { --t-rgb: var(--medium); }
+  .t-low { --t-rgb: var(--low); }
+
+  /* Distribution bars */
+  .bars-head { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: rgb(var(--muted)); margin-bottom: 14px; }
+  .bars { display: flex; flex-direction: column; gap: 12px; }
+  .bar-row { display: grid; grid-template-columns: 78px 1fr 34px; gap: 12px; align-items: center; }
+  .bar-row .name { font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 7px; color: rgb(var(--ink-soft)); font-family: "JetBrains Mono", ui-monospace, monospace; }
+  .bar-row .swatch { height: 8px; width: 8px; border-radius: 2px; flex-shrink: 0; }
+  .track { height: 8px; border-radius: 999px; background: rgb(var(--bg-2)); border: 1px solid rgb(var(--border)); overflow: hidden; }
   .track > span { display: block; height: 100%; border-radius: 999px; }
-  .bar-row .ct { font-size: 13px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; color: rgb(var(--ink)); }
+  .bar-row .ct { font-size: 13px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; color: rgb(var(--ink)); font-family: "JetBrains Mono", ui-monospace, monospace; }
 
   .sw-critical, .fill-critical { background: rgb(var(--critical)); }
   .sw-high, .fill-high { background: rgb(var(--high)); }
   .sw-medium, .fill-medium { background: rgb(var(--medium)); }
   .sw-low, .fill-low { background: rgb(var(--low)); }
 
-  .stat-strip {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0;
-    border-top: 1px solid rgb(var(--border));
+  /* Telemetry strip under the bento */
+  .telemetry { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 16px; }
+  .metric {
+    border-radius: 12px; border: 1px solid rgb(var(--border)); background: rgb(var(--panel) / 0.92);
+    padding: 15px 16px;
   }
-  .stat { padding: 16px 22px; text-align: center; border-right: 1px solid rgb(var(--border)); }
-  .stat:last-child { border-right: 0; }
-  .stat .n { font-size: 22px; font-weight: 800; color: rgb(var(--ink)); line-height: 1; }
-  .stat .n.good { color: rgb(var(--pass)); }
-  .stat .l { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: rgb(var(--muted)); margin-top: 6px; }
+  .metric .mk { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: rgb(var(--muted)); }
+  .metric .mv { font-size: 24px; font-weight: 800; color: rgb(var(--ink)); margin-top: 7px; font-family: "JetBrains Mono", ui-monospace, monospace; line-height: 1; }
+  .metric .mv.good { color: rgb(var(--pass)); }
+  .metric .mv.bad { color: rgb(var(--sev-rgb)); }
+  .metric .ms { font-size: 11px; color: rgb(var(--muted)); margin-top: 6px; }
 
-  /* ---------- Badges / chips ---------- */
+  /* ===================== Badges / chips ===================== */
   .badge {
-    display: inline-flex; align-items: center; font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em;
-    text-transform: uppercase; padding: 3px 9px; border-radius: 999px; color: #fff; white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 700; letter-spacing: 0.07em;
+    text-transform: uppercase; padding: 3px 8px; border-radius: 6px; white-space: nowrap;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
   }
-  .badge.critical { background: rgb(var(--critical)); }
-  .badge.high { background: rgb(var(--high)); }
-  .badge.medium { background: rgb(var(--medium)); }
-  .badge.low { background: rgb(var(--low)); }
-  .badge.info { background: rgb(var(--muted)); }
+  .badge .bdot { height: 6px; width: 6px; border-radius: 2px; background: currentColor; }
+  .badge.critical { color: rgb(var(--critical)); background: rgb(var(--critical) / 0.13); border: 1px solid rgb(var(--critical) / 0.32); }
+  .badge.high { color: rgb(var(--high)); background: rgb(var(--high) / 0.13); border: 1px solid rgb(var(--high) / 0.32); }
+  .badge.medium { color: rgb(var(--medium)); background: rgb(var(--medium) / 0.14); border: 1px solid rgb(var(--medium) / 0.32); }
+  .badge.low { color: rgb(var(--low)); background: rgb(var(--low) / 0.14); border: 1px solid rgb(var(--low) / 0.32); }
+  .badge.info { color: rgb(var(--info)); background: rgb(var(--info) / 0.14); border: 1px solid rgb(var(--info) / 0.32); }
+  .badge.pass { color: rgb(var(--pass)); background: rgb(var(--pass) / 0.13); border: 1px solid rgb(var(--pass) / 0.32); }
   .chip {
     display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600;
-    padding: 3px 9px; border-radius: 7px;
-    color: rgb(var(--ink-soft)); background: rgb(var(--panel-2));
-    border: 1px solid rgb(var(--border));
+    padding: 3px 9px; border-radius: 6px; font-family: "JetBrains Mono", ui-monospace, monospace;
+    color: rgb(var(--ink-soft)); background: rgb(var(--panel-3)); border: 1px solid rgb(var(--border));
   }
-  .chip.owasp { color: rgb(var(--brand)); background: rgb(var(--brand) / 0.10); border-color: rgb(var(--brand) / 0.22); }
+  .chip.owasp { color: rgb(var(--signal)); background: rgb(var(--signal) / 0.10); border-color: rgb(var(--signal) / 0.28); }
 
-  /* ---------- Coverage table ---------- */
-  table.cov { width: 100%; border-collapse: collapse; font-size: 14px; }
+  /* ===================== Threat-coverage matrix ===================== */
+  table.cov { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   table.cov thead th {
-    text-align: left; padding: 12px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
-    color: rgb(var(--muted)); border-bottom: 1px solid rgb(var(--border)); font-weight: 600;
+    text-align: left; padding: 12px 20px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.09em;
+    color: rgb(var(--muted)); border-bottom: 1px solid rgb(var(--border)); font-weight: 700;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
   }
   table.cov tbody td { padding: 13px 20px; border-bottom: 1px solid rgb(var(--border) / 0.7); vertical-align: middle; }
   table.cov tbody tr:last-child td { border-bottom: 0; }
-  table.cov td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.cov td.num { text-align: right; font-variant-numeric: tabular-nums; font-family: "JetBrains Mono", ui-monospace, monospace; }
   table.cov .cat { font-weight: 600; color: rgb(var(--ink)); }
   table.cov tbody tr:hover td { background: rgb(var(--panel-2) / 0.6); }
+  .clean-tag { color: rgb(var(--pass)); background: rgb(var(--pass) / 0.10); border: 1px solid rgb(var(--pass) / 0.28); }
 
-  /* ---------- Findings ---------- */
+  /* ===================== Findings (console cards) ===================== */
   .findings { display: flex; flex-direction: column; gap: 12px; }
   details.finding {
-    border-radius: 14px; overflow: hidden;
-    border: 1px solid rgb(var(--border)); border-left: 4px solid rgb(var(--border));
-    background: rgb(var(--panel) / 0.85);
-    box-shadow: 0 1px 2px rgb(var(--shadow) / 0.04), 0 12px 30px -22px rgb(var(--shadow) / 0.22);
+    border-radius: 12px; overflow: hidden;
+    border: 1px solid rgb(var(--border)); border-left: 3px solid rgb(var(--border));
+    background: rgb(var(--panel) / 0.92);
+    box-shadow: 0 1px 2px rgb(var(--shadow) / 0.22), 0 14px 36px -28px rgb(var(--shadow) / 0.55);
   }
   details.finding[data-sev="CRITICAL"] { border-left-color: rgb(var(--critical)); }
   details.finding[data-sev="HIGH"] { border-left-color: rgb(var(--high)); }
   details.finding[data-sev="MEDIUM"] { border-left-color: rgb(var(--medium)); }
   details.finding[data-sev="LOW"] { border-left-color: rgb(var(--low)); }
   details.finding > summary {
-    list-style: none; cursor: pointer; padding: 15px 18px;
+    list-style: none; cursor: pointer; padding: 14px 18px;
     display: flex; align-items: center; gap: 12px;
   }
   details.finding > summary::-webkit-details-marker { display: none; }
-  summary .title { font-weight: 650; font-size: 15px; flex: 1; min-width: 0; color: rgb(var(--ink)); }
+  details.finding > summary:hover { background: rgb(var(--panel-2) / 0.5); }
+  summary .fid { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 11.5px; color: rgb(var(--muted)); flex-shrink: 0; }
+  summary .title { font-weight: 650; font-size: 14.5px; flex: 1; min-width: 0; color: rgb(var(--ink)); }
   summary .chev { color: rgb(var(--muted)); transition: transform .18s ease; flex-shrink: 0; }
   details.finding[open] summary .chev { transform: rotate(180deg); }
-  summary .pid { font-size: 12px; color: rgb(var(--muted)); }
-  .finding-body { padding: 4px 18px 18px; border-top: 1px solid rgb(var(--border)); }
+  .finding-body { padding: 2px 18px 18px; border-top: 1px solid rgb(var(--border)); }
   .finding-meta { display: flex; flex-wrap: wrap; gap: 7px; margin: 14px 0 4px; }
-  .row { margin: 14px 0; }
-  .lbl { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: rgb(var(--muted)); margin-bottom: 5px; display: flex; align-items: center; gap: 6px; }
+  .row { margin: 16px 0; }
+  .lbl {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: rgb(var(--muted));
+    margin-bottom: 7px; display: flex; align-items: center; gap: 7px;
+  }
   .row .body-text { color: rgb(var(--ink-soft)); }
+  /* Terminal block with a faux prompt rail */
   pre {
-    margin: 0; padding: 13px 14px; border-radius: 10px; overflow-x: auto;
-    background: rgb(var(--panel-2)); border: 1px solid rgb(var(--border));
+    margin: 0; padding: 0; border-radius: 10px; overflow: hidden;
+    background: rgb(var(--bg-2)); border: 1px solid rgb(var(--border));
+  }
+  pre .pre-head {
+    display: flex; align-items: center; gap: 6px; padding: 7px 12px; border-bottom: 1px solid rgb(var(--border));
+    font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: rgb(var(--muted));
+    background: rgb(var(--panel-2) / 0.6);
+  }
+  pre .pre-head .dotrow { display: inline-flex; gap: 4px; margin-right: 4px; }
+  pre .pre-head .d { height: 8px; width: 8px; border-radius: 999px; background: rgb(var(--border-2)); }
+  pre code {
+    display: block; padding: 13px 14px;
     color: rgb(var(--ink-soft));
-    font: 12.5px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    white-space: pre-wrap; word-break: break-word;
+    font: 12.5px/1.6 "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    white-space: pre-wrap; word-break: break-word; overflow-x: auto;
   }
   .evidence-box {
-    border-radius: 10px; padding: 11px 13px; font-size: 13.5px;
-    color: rgb(var(--high)); background: rgb(var(--high) / 0.08); border: 1px solid rgb(var(--high) / 0.22);
+    border-radius: 10px; padding: 12px 14px; font-size: 13px;
+    color: rgb(var(--high)); background: rgb(var(--high) / 0.08); border: 1px solid rgb(var(--high) / 0.26);
+    font-family: "JetBrains Mono", ui-monospace, monospace;
   }
   .remediation-box {
-    border-radius: 10px; padding: 11px 13px; font-size: 13.5px;
-    color: rgb(var(--low)); background: rgb(var(--low) / 0.08); border: 1px solid rgb(var(--low) / 0.22);
+    border-radius: 10px; padding: 12px 14px; font-size: 13px;
+    color: rgb(var(--pass)); background: rgb(var(--pass) / 0.08); border: 1px solid rgb(var(--pass) / 0.26);
   }
   .empty {
-    display: flex; align-items: center; gap: 12px; padding: 22px; border-radius: 14px;
-    color: rgb(var(--pass)); background: rgb(var(--pass) / 0.08); border: 1px solid rgb(var(--pass) / 0.22);
+    display: flex; align-items: center; gap: 13px; padding: 24px; border-radius: 12px;
+    color: rgb(var(--pass)); background: rgb(var(--pass) / 0.08); border: 1px solid rgb(var(--pass) / 0.26);
     font-weight: 600;
   }
 
-  /* ---------- Compliance ---------- */
-  .frameworks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+  /* ===================== Compliance report-card ===================== */
+  .frameworks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 16px; }
   .fw {
-    border-radius: 14px; padding: 16px; border: 1px solid rgb(var(--border));
-    background: rgb(var(--panel) / 0.85);
+    border-radius: 13px; padding: 17px; border: 1px solid rgb(var(--border));
+    background: rgb(var(--panel) / 0.92); position: relative; overflow: hidden;
   }
-  .fw h3 { margin: 0 0 5px; font-size: 14px; color: rgb(var(--ink)); display: flex; align-items: center; gap: 8px; }
-  .fw .tag { font-size: 10px; font-weight: 700; color: rgb(var(--brand)); background: rgb(var(--brand) / 0.12); padding: 2px 7px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
-  .fw p { margin: 0; font-size: 12.5px; color: rgb(var(--muted)); line-height: 1.55; }
+  .fw::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; background: rgb(var(--signal)); opacity: .8; }
+  .fw h3 { margin: 0 0 6px; font-size: 14px; color: rgb(var(--ink)); display: flex; align-items: center; gap: 9px; }
+  .fw .tag {
+    font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 9.5px; font-weight: 700;
+    color: rgb(var(--signal)); background: rgb(var(--signal) / 0.12); padding: 3px 7px; border-radius: 6px;
+    text-transform: uppercase; letter-spacing: 0.07em;
+  }
+  .fw p { margin: 0; font-size: 12.5px; color: rgb(var(--ink-soft)); line-height: 1.6; }
 
   table.map { width: 100%; border-collapse: collapse; font-size: 13px; }
   table.map thead th {
-    text-align: left; padding: 11px 16px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em;
-    color: rgb(var(--muted)); border-bottom: 1px solid rgb(var(--border)); font-weight: 600; white-space: nowrap;
+    text-align: left; padding: 11px 16px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: rgb(var(--muted)); border-bottom: 1px solid rgb(var(--border)); font-weight: 700; white-space: nowrap;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
   }
-  table.map tbody td { padding: 12px 16px; border-bottom: 1px solid rgb(var(--border) / 0.7); vertical-align: top; }
+  table.map tbody td { padding: 13px 16px; border-bottom: 1px solid rgb(var(--border) / 0.7); vertical-align: top; }
   table.map tbody tr:last-child td { border-bottom: 0; }
+  table.map tbody tr:hover td { background: rgb(var(--panel-2) / 0.5); }
   table.map .cat { font-weight: 600; color: rgb(var(--ink)); white-space: nowrap; }
   table.map .nist, table.map .iso { font-size: 12px; color: rgb(var(--ink-soft)); }
-  table.map .num { text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.map .num { text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; font-family: "JetBrains Mono", ui-monospace, monospace; }
 
   .note {
-    margin-top: 14px; font-size: 12.5px; color: rgb(var(--muted)); line-height: 1.6;
-    border-left: 3px solid rgb(var(--brand) / 0.4); padding: 4px 0 4px 14px;
+    margin-top: 14px; font-size: 12.5px; color: rgb(var(--muted)); line-height: 1.65;
+    border-left: 3px solid rgb(var(--signal) / 0.4); padding: 4px 0 4px 14px;
   }
 
-  /* ---------- Footer ---------- */
-  footer.site {
-    margin-top: 56px; border-top: 1px solid rgb(var(--border));
-  }
+  /* ===================== Footer ===================== */
+  footer.console { margin-top: 58px; border-top: 1px solid rgb(var(--border)); }
   .footer-inner {
-    max-width: 1060px; margin: 0 auto; padding: 26px 20px;
+    max-width: 1120px; margin: 0 auto; padding: 26px 22px;
     display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
-    font-size: 13px; color: rgb(var(--muted));
+    font-size: 12.5px; color: rgb(var(--muted)); font-family: "JetBrains Mono", ui-monospace, monospace;
   }
-  .footer-inner a { font-weight: 600; text-decoration: none; }
-  .footer-inner a:hover { text-decoration: underline; }
+  .footer-inner b { color: rgb(var(--ink-soft)); font-weight: 600; }
   .footer-links { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; }
 
-  /* ---------- Responsive ---------- */
-  @media (max-width: 720px) {
-    .dash { grid-template-columns: 1fr; }
+  /* ===================== Responsive ===================== */
+  @media (max-width: 860px) {
+    .bento { grid-template-columns: 1fr; grid-template-areas: "donut" "tiles" "bars"; }
+    .telemetry { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 560px) {
+    .tiles { grid-template-columns: repeat(2, 1fr); }
+    .tile:nth-child(2) { border-right: 0; }
+    .tile:nth-child(1), .tile:nth-child(2) { border-bottom: 1px solid rgb(var(--border)); }
+    .telemetry { grid-template-columns: 1fr; }
     .frameworks { grid-template-columns: 1fr; }
-    .stat-strip { grid-template-columns: 1fr; }
-    .stat { border-right: 0; border-bottom: 1px solid rgb(var(--border)); }
-    .stat:last-child { border-bottom: 0; }
-    .hero h1 { font-size: 25px; }
-    /* Stack the headline: icon + text on top, verdict on its own full-width row,
-       so the "Found N findings" line wraps as a sentence rather than per-word. */
-    .headline-top { align-items: flex-start; }
-    .headline-text .big { font-size: 19px; }
-    .verdict { order: 3; margin-left: 56px; }
+    .hero h1 { font-size: 24px; }
+    .verdict-flag { margin-left: 0; order: 3; }
+    .runmeta .cell { flex-basis: 100%; border-right: 0; border-bottom: 1px solid rgb(var(--border)); }
+    .runmeta .cell:last-child { border-bottom: 0; }
     table.map, table.cov { display: block; overflow-x: auto; white-space: nowrap; }
   }
-  @media (max-width: 460px) {
-    .headline-icon { display: none; }
-    .verdict { margin-left: 0; width: 100%; text-align: center; }
-  }
   @media print {
-    header.site, .theme-toggle { position: static; }
-    body { background: #fff; }
+    header.console, .theme-toggle { position: static; }
+    body { background: #fff; color: #000; }
     details.finding { break-inside: avoid; }
   }
 </style>
 <script>
-  // Theme: respect saved preference, else system. Set before paint (this runs in
-  // <head>) so there is no flash. Self-contained — no external dependency.
+  // Theme: dark-first. Honour an explicit saved preference; otherwise default to
+  // the console's native dark. Runs in <head> so there is no flash. No external dep.
   (function () {
     try {
       var saved = localStorage.getItem("llmscan-theme");
-      var dark = saved ? saved === "dark"
-        : (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      var dark = saved ? saved === "dark" : true;
       document.documentElement.classList.toggle("dark", !!dark);
     } catch (e) {}
   })();
@@ -378,20 +498,24 @@
   }
 </script>
 </head>
-<body>
+<body
+  {% if hs %}style="--sev-rgb: var(--{{ worst }}); --sev-ink: {{ '8 18 24' if worst in ('low','medium') else '255 255 255' }};"
+  {% else %}style="--sev-rgb: var(--pass); --sev-ink: 8 18 24;"{% endif %}>
 
-<header class="site">
-  <div class="site-inner">
+<header class="console">
+  <div class="console-inner">
     <a class="brand" href="#top">
       <span class="brand-mark" aria-hidden="true">
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
       </span>
       <span class="brand-name">
-        <b>LLM Security <span class="grad-text">Scanner</span></b>
-        <span>Adversarial assessment &amp; governance</span>
+        <b>LLM Security <span class="signal-text">Console</span></b>
+        <span>Adversarial Scanner</span>
       </span>
     </a>
-    <button type="button" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode" title="Toggle dark mode">
+    <span class="topbar-spacer"></span>
+    <span class="scan-pill"><span class="live"></span> scan complete</span>
+    <button type="button" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme" title="Toggle light / dark">
       <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
       <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
     </button>
@@ -400,57 +524,72 @@
 
 <div class="wrap" id="top">
 
-  <!-- Hero -->
+  <!-- Command header -->
   <section class="hero">
-    <span class="eyebrow"><span class="dot"></span> LLM Security Scan Report</span>
-    <h1>Adversarial assessment of <span class="grad-text mono">{{ result.target }}</span></h1>
-    <p class="lede">An automated red-team battery plus an audit-ready governance package — findings mapped to the OWASP LLM Top 10, NIST AI RMF, and ISO/IEC 42001.</p>
+    <span class="kicker"><span class="dot"></span> Adversarial Scan Report</span>
+    <h1>Security assessment · <span class="signal-text mono">{{ result.target }}</span></h1>
+    <p class="lede">An automated red-team battery run against the target LLM, with every finding mapped to the OWASP&nbsp;LLM&nbsp;Top&nbsp;10, NIST&nbsp;AI&nbsp;RMF and ISO/IEC&nbsp;42001 — the engineering report and the audit evidence from one run.</p>
 
-    <!-- Headline verdict -->
-    <div class="headline">
-      <div class="headline-top">
-        <span class="headline-icon" aria-hidden="true">
+    <!-- Verdict bar -->
+    <div class="verdict-bar">
+      <div class="verdict-top">
+        <span class="verdict-icon" aria-hidden="true">
           {% if hs and hs.value >= 3 %}
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           {% else %}
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
           {% endif %}
         </span>
-        <div class="headline-text">
+        <div class="verdict-text">
           <div class="big">Found <em>{{ result.total_findings }}</em> finding{{ '' if result.total_findings == 1 else 's' }}{% if sc.CRITICAL %} · <em>{{ sc.CRITICAL }}</em> Critical{% endif %}{% if sc.HIGH %} · {{ sc.HIGH }} High{% endif %}</div>
-          <div class="sub">{{ result.total_probes }} adversarial probes · {{ "%.0f"|format(result.pass_rate * 100) }}% pass rate · highest severity {{ hs.name|title if hs else "None" }}</div>
+          <div class="sub">{{ result.total_probes }} adversarial probes executed · {{ "%.0f"|format(result.pass_rate * 100) }}% pass rate · highest severity {{ hs.name|title if hs else "None" }}</div>
         </div>
         {% if hs and hs.value >= 4 %}
-        <span class="verdict block">Release-blocking</span>
+        <span class="verdict-flag"><span class="pulse"></span> Release-blocking</span>
         {% elif hs and hs.value >= 3 %}
-        <span class="verdict warn">Needs remediation</span>
+        <span class="verdict-flag"><span class="pulse"></span> Needs remediation</span>
         {% else %}
-        <span class="verdict ok">No blockers</span>
+        <span class="verdict-flag"><span class="pulse"></span> No blockers</span>
         {% endif %}
       </div>
-      <div class="meta">
-        <span>Target <b class="mono">{{ result.target }}</b></span>
-        <span>Scanner <b class="mono">{{ result.scanner_version or "—" }}</b></span>
-        <span>Started <b class="mono">{{ result.started_at }}</b></span>
-        <span>Finished <b class="mono">{{ result.finished_at }}</b></span>
+      <div class="runmeta">
+        <div class="cell"><div class="k">Target</div><div class="v">{{ result.target }}</div></div>
+        <div class="cell"><div class="k">Scanner</div><div class="v">v{{ result.scanner_version or "0.1.0" }}</div></div>
+        <div class="cell"><div class="k">Started</div><div class="v">{{ result.started_at }}</div></div>
+        <div class="cell"><div class="k">Finished</div><div class="v">{{ result.finished_at }}</div></div>
       </div>
     </div>
   </section>
 
-  <!-- Severity dashboard -->
+  <!-- Bento severity dashboard -->
   <section class="block">
-    <h2 class="sec">Severity overview</h2>
-    <div class="card">
-      <div class="dash">
-        <div class="donut-wrap">
-          <div class="donut" role="img" aria-label="Findings by severity">
-            {% if result.total_findings == 0 %}<div class="donut-empty"></div>{% endif %}
-            <div class="donut-center">
-              <div class="n">{{ result.total_findings }}</div>
-              <div class="l">Finding{{ '' if result.total_findings == 1 else 's' }}</div>
-            </div>
+    <h2 class="sec"><span class="idx">01</span> Severity overview</h2>
+    <div class="bento">
+      <div class="bento-cell cell-donut">
+        <div class="donut" role="img" aria-label="Findings by severity">
+          {% if result.total_findings == 0 %}<div class="donut-empty"></div>{% endif %}
+          <div class="donut-center">
+            <div class="n">{{ result.total_findings }}</div>
+            <div class="l">Finding{{ '' if result.total_findings == 1 else 's' }}</div>
           </div>
         </div>
+        <div class="donut-cap">across <b>{{ categories|length }}</b> categories</div>
+      </div>
+
+      <div class="bento-cell cell-tiles">
+        <div class="tiles">
+          {% for seg in donut.segments %}
+          <div class="tile t-{{ seg.name|lower }} {{ 'zero' if not seg.count }}">
+            <div class="tlabel"><span class="tdot"></span>{{ seg.label }}</div>
+            <div class="tnum {{ 'hit' if seg.count }}">{{ seg.count }}</div>
+            <div class="tbar"><span style="width: {{ seg.pct if result.total_findings else 0 }}%"></span></div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="bento-cell cell-bars">
+        <div class="bars-head">Distribution</div>
         <div class="bars">
           {% for seg in donut.segments %}
           <div class="bar-row">
@@ -461,18 +600,21 @@
           {% endfor %}
         </div>
       </div>
-      <div class="stat-strip">
-        <div class="stat"><div class="n">{{ result.total_probes }}</div><div class="l">Probes run</div></div>
-        <div class="stat"><div class="n good">{{ "%.0f"|format(result.pass_rate * 100) }}%</div><div class="l">Pass rate</div></div>
-        <div class="stat"><div class="n">{{ categories|length }}</div><div class="l">Categories</div></div>
-      </div>
+    </div>
+
+    <!-- Telemetry strip -->
+    <div class="telemetry">
+      <div class="metric"><div class="mk">Probes run</div><div class="mv">{{ result.total_probes }}</div><div class="ms">adversarial test cases</div></div>
+      <div class="metric"><div class="mk">Pass rate</div><div class="mv good">{{ "%.0f"|format(result.pass_rate * 100) }}%</div><div class="ms">probes handled safely</div></div>
+      <div class="metric"><div class="mk">Findings</div><div class="mv {{ 'bad' if result.total_findings else 'good' }}">{{ result.total_findings }}</div><div class="ms">vulnerabilities surfaced</div></div>
+      <div class="metric"><div class="mk">Highest severity</div><div class="mv {{ 'bad' if hs else 'good' }}">{{ hs.name|title if hs else "None" }}</div><div class="ms">drives the verdict</div></div>
     </div>
   </section>
 
-  <!-- Coverage by category -->
+  <!-- Threat coverage matrix -->
   <section class="block">
-    <h2 class="sec">Coverage by category</h2>
-    <div class="card">
+    <h2 class="sec"><span class="idx">02</span> Threat coverage</h2>
+    <div class="panel">
       <table class="cov">
         <thead>
           <tr><th>Category</th><th>OWASP</th><th class="num">Probes</th><th class="num">Findings</th><th>Result</th></tr>
@@ -485,8 +627,8 @@
             <td class="num">{{ cat.probes }}</td>
             <td class="num">{{ cat.findings }}</td>
             <td>
-              {% if cat.findings %}<span class="badge {{ cat.worst|lower }}">{{ cat.worst|title }}</span>
-              {% else %}<span class="chip" style="color: rgb(var(--pass)); background: rgb(var(--pass) / 0.10); border-color: rgb(var(--pass) / 0.22);">Clean</span>{% endif %}
+              {% if cat.findings %}<span class="badge {{ cat.worst|lower }}"><span class="bdot"></span>{{ cat.worst|title }}</span>
+              {% else %}<span class="chip clean-tag">Clean</span>{% endif %}
             </td>
           </tr>
           {% endfor %}
@@ -497,20 +639,20 @@
 
   <!-- Findings -->
   <section class="block">
-    <h2 class="sec">Findings · {{ result.total_findings }}</h2>
+    <h2 class="sec"><span class="idx">03</span> Findings · {{ result.total_findings }}</h2>
     {% if result.findings %}
     <div class="findings">
       {% for f in result.findings %}
       <details class="finding" data-sev="{{ f.severity.name }}"{% if loop.first %} open{% endif %}>
         <summary>
-          <span class="badge {{ f.severity.name|lower }}">{{ f.severity.name }}</span>
+          <span class="badge {{ f.severity.name|lower }}"><span class="bdot"></span>{{ f.severity.name }}</span>
           <span class="title">{{ f.name }}</span>
-          <span class="pid mono">{{ f.probe_id }}</span>
+          <span class="fid">{{ f.probe_id }}</span>
           <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         </summary>
         <div class="finding-body">
           <div class="finding-meta">
-            <span class="chip mono">{{ f.category }}</span>
+            <span class="chip">{{ f.category }}</span>
             {% if f.owasp %}<span class="chip owasp">OWASP {{ f.owasp }}</span>{% endif %}
             {% if f.detector %}<span class="chip">detector: {{ f.detector }}</span>{% endif %}
           </div>
@@ -524,12 +666,18 @@
             </div>
             <div class="evidence-box">{{ f.evidence }}</div>
           </div>
-          <div class="row"><div class="lbl">Probe sent</div><pre>{{ f.prompt }}</pre></div>
-          <div class="row"><div class="lbl">Model response</div><pre>{{ f.response }}</pre></div>
+          <div class="row">
+            <div class="lbl">Probe sent</div>
+            <pre><span class="pre-head"><span class="dotrow"><span class="d"></span><span class="d"></span><span class="d"></span></span> probe · {{ f.probe_id }}</span><code>{{ f.prompt }}</code></pre>
+          </div>
+          <div class="row">
+            <div class="lbl">Model response</div>
+            <pre><span class="pre-head"><span class="dotrow"><span class="d"></span><span class="d"></span><span class="d"></span></span> response · {{ result.target }}</span><code>{{ f.response }}</code></pre>
+          </div>
           {% if f.remediation %}
           <div class="row">
             <div class="lbl">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M21 12c-1 0-3-1-3-3s2-3 3-3-1-2-3-2-3 2-3 3-2 3-3 3 1 2 3 2 3-2 3-3"/></svg>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
               Remediation
             </div>
             <div class="remediation-box">{{ f.remediation }}</div>
@@ -547,9 +695,9 @@
     {% endif %}
   </section>
 
-  <!-- Compliance mapping -->
+  <!-- Compliance report-card -->
   <section class="block">
-    <h2 class="sec">Governance &amp; compliance mapping</h2>
+    <h2 class="sec"><span class="idx">04</span> Governance &amp; compliance mapping</h2>
 
     <div class="frameworks">
       <div class="fw">
@@ -558,7 +706,7 @@
       </div>
       <div class="fw">
         <h3><span class="tag">ISO</span> 42001:2023</h3>
-        <p>Each risk category cites the relevant Annex A control area (information security, privacy by design, data quality &amp; third-party data).</p>
+        <p>Each risk category cites the relevant Annex&nbsp;A control area — information security, privacy by design, data quality &amp; third-party data.</p>
       </div>
       <div class="fw">
         <h3><span class="tag">OWASP</span> LLM Top 10</h3>
@@ -566,7 +714,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="panel">
       <table class="map">
         <thead>
           <tr>
@@ -577,7 +725,7 @@
         <tbody>
           {% for c in compliance %}
           <tr>
-            <td class="cat mono">{{ c.category }}{% if c.owasp %}<br><span class="chip owasp" style="margin-top:5px">{{ c.owasp }}</span>{% endif %}</td>
+            <td class="cat mono">{{ c.category }}{% if c.owasp %}<br><span class="chip owasp" style="margin-top:6px">{{ c.owasp }}</span>{% endif %}</td>
             <td class="num">{{ c.probes }}</td>
             <td class="num">{% if c.findings %}<span class="badge {{ c.worst|lower }}">{{ c.findings }}</span>{% else %}0{% endif %}</td>
             <td class="nist">{{ c.nist }}</td>
@@ -599,9 +747,9 @@
 
 </div>
 
-<footer class="site">
+<footer class="console">
   <div class="footer-inner">
-    <span>Built by <b style="color: rgb(var(--ink-soft));">Laela Zorana</b> · LLM Security Scanner v{{ result.scanner_version or "0.1.0" }} · {{ result.total_probes }} probes executed</span>
+    <span>Built by <b>Laela Zorana</b> · LLM Security Scanner v{{ result.scanner_version or "0.1.0" }} · {{ result.total_probes }} probes executed</span>
     <span class="footer-links">
       <a href="https://github.com/LaelaZorana/llm-security-scanner" target="_blank" rel="noopener">GitHub</a>
       <a href="#top">Back to top</a>
