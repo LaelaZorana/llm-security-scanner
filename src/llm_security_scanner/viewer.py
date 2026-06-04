@@ -158,7 +158,7 @@ def _landing_html(result: ScanResult) -> str:
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>LLM Security Console — live demo</title>
+<title>LLM Security Console: live demo</title>
 <meta name="description" content="One-command demo of the LLM Security Scanner: run an adversarial battery against an LLM and get an audit-ready governance package." />
 <style>
   :root {{
@@ -320,8 +320,8 @@ def _landing_html(result: ScanResult) -> str:
 <div class="wrap">
   <section class="hero">
     <span class="kicker"><span class="dot"></span> Live demo · offline, no API key</span>
-    <h1>Security-test any LLM. Ship the <span class="signal-text">audit evidence</span>.</h1>
-    <p class="lede">An extensible adversarial probe battery — prompt injection, jailbreaks, secret leakage, indirect/RAG injection — with a NIST AI RMF / ISO 42001 governance package generated from the same run.</p>
+    <h1>Security-test any LLM. Produce the <span class="signal-text">audit evidence</span>.</h1>
+    <p class="lede">An extensible adversarial probe battery, prompt injection, jailbreaks, secret leakage, indirect/RAG injection, with a NIST AI RMF / ISO 42001 governance package generated from the same run.</p>
     <div class="cta">
       <a class="btn primary" href="/report">
         Open the full report

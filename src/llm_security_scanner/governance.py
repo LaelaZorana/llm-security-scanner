@@ -267,7 +267,7 @@ def _rmf_function_blocks(result: ScanResult) -> List[Tuple[str, str, List[str]]]
     measure = [
         f"Quantitative result: {total_findings} finding(s); overall probe "
         f"pass rate {result.pass_rate:.0%}.",
-        "Severity distribution — "
+        "Severity distribution: "
         f"Critical {sc['CRITICAL']}, High {sc['HIGH']}, "
         f"Medium {sc['MEDIUM']}, Low {sc['LOW']}.",
         "Each finding carries reproducible evidence (the exact probe and model "
@@ -351,7 +351,7 @@ def render_model_card(result: ScanResult) -> str:
     lines += ["", "## 2. NIST AI RMF mapping", ""]
 
     for name, desc, bullets in _rmf_function_blocks(result):
-        lines.append(f"### {name} — {desc}")
+        lines.append(f"### {name}: {desc}")
         lines.append("")
         for b in bullets:
             lines.append(f"- {b}")

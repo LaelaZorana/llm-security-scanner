@@ -27,7 +27,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>LLM Security Scan Report · {{ result.target }}</title>
-<meta name="description" content="Automated LLM adversarial security assessment — findings mapped to the OWASP LLM Top 10, NIST AI RMF and ISO/IEC 42001." />
+<meta name="description" content="Automated LLM adversarial security assessment: findings mapped to the OWASP LLM Top 10, NIST AI RMF and ISO/IEC 42001." />
 <style>
   /* ===================== Design tokens ===================== *
    * Dark-first enterprise security console. Light is a secondary option.
@@ -528,7 +528,7 @@
   <section class="hero">
     <span class="kicker"><span class="dot"></span> Adversarial Scan Report</span>
     <h1>Security assessment · <span class="signal-text mono">{{ result.target }}</span></h1>
-    <p class="lede">An automated red-team battery run against the target LLM, with every finding mapped to the OWASP&nbsp;LLM&nbsp;Top&nbsp;10, NIST&nbsp;AI&nbsp;RMF and ISO/IEC&nbsp;42001 — the engineering report and the audit evidence from one run.</p>
+    <p class="lede">An automated red-team battery run against the target LLM, with every finding mapped to the OWASP&nbsp;LLM&nbsp;Top&nbsp;10, NIST&nbsp;AI&nbsp;RMF and ISO/IEC&nbsp;42001: the engineering report and the audit evidence from one run.</p>
 
     <!-- Verdict bar -->
     <div class="verdict-bar">
@@ -690,7 +690,7 @@
     {% else %}
     <div class="empty">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-      No findings — every probe was handled safely.
+      No findings. Every probe was handled safely.
     </div>
     {% endif %}
   </section>
@@ -702,11 +702,11 @@
     <div class="frameworks">
       <div class="fw">
         <h3><span class="tag">NIST</span> AI RMF 1.0</h3>
-        <p>Findings organised under GOVERN, MAP, MEASURE and MANAGE — a repeatable, owner-assigned, CI-enforced measurement of model risk.</p>
+        <p>Findings organised under GOVERN, MAP, MEASURE and MANAGE: a repeatable, owner-assigned, CI-enforced measurement of model risk.</p>
       </div>
       <div class="fw">
         <h3><span class="tag">ISO</span> 42001:2023</h3>
-        <p>Each risk category cites the relevant Annex&nbsp;A control area — information security, privacy by design, data quality &amp; third-party data.</p>
+        <p>Each risk category cites the relevant Annex&nbsp;A control area: information security, privacy by design, data quality &amp; third-party data.</p>
       </div>
       <div class="fw">
         <h3><span class="tag">OWASP</span> LLM Top 10</h3>
@@ -739,7 +739,7 @@
 
     <p class="note">
       The machine-readable <span class="mono">model_card.md</span> (NIST AI RMF / ISO 42001 narrative) and
-      <span class="mono">risk_register.csv</span> (GRC-ready, owner-assigned risk rows) ship alongside this report.
+      <span class="mono">risk_register.csv</span> (GRC-ready, owner-assigned risk rows) sit alongside this report.
       Automated scanning establishes a security baseline and an evidence trail; it complements, but does not
       replace, human red-teaming and a full risk assessment.
     </p>
