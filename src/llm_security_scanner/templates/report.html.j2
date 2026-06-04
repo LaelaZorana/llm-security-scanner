@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 {#
-  report.html.j2 — the self-contained ENTERPRISE SECURITY CONSOLE report.
+  report.html.j2: the self-contained ENTERPRISE SECURITY CONSOLE report.
 
   Identity: a dark-first technical security console (think Snyk / Semgrep /
   Lakera dashboards). Near-black slate canvas, a cyan→emerald "scanner signal"
@@ -11,7 +11,7 @@
   compliance report-card.
 
   Hard constraint: this file must render to a SINGLE, fully self-contained HTML
-  document with NO external assets — no <link> and no src= references — so it can
+  document with NO external assets, no <link> and no src= references, so it can
   be emailed or attached to an audit as-is (and so the offline test suite stays
   green). All styling is inline in the <style> block below; the only script is a
   tiny inline theme toggle.
@@ -623,7 +623,7 @@
           {% for cat in compliance %}
           <tr>
             <td class="cat mono">{{ cat.category }}</td>
-            <td>{% if cat.owasp %}<span class="chip owasp">{{ cat.owasp }}</span>{% else %}—{% endif %}</td>
+            <td>{% if cat.owasp %}<span class="chip owasp">{{ cat.owasp }}</span>{% else %}-{% endif %}</td>
             <td class="num">{{ cat.probes }}</td>
             <td class="num">{{ cat.findings }}</td>
             <td>

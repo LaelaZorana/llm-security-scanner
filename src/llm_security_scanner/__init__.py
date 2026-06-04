@@ -1,5 +1,5 @@
 """
-llm-security-scanner — security-test any LLM endpoint and produce a governance
+llm-security-scanner: security-test any LLM endpoint and produce a governance
 package (vulnerability report + NIST AI RMF / ISO 42001 model card + risk
 register).
 

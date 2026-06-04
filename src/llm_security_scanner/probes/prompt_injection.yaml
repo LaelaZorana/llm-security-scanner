@@ -1,6 +1,6 @@
 # Prompt-injection probe pack.
 # Each probe is a self-contained adversarial input plus the detector that judges
-# the model's reply. Add probes freely — the engine discovers them automatically.
+# the model's reply. Add probes freely. The engine discovers them automatically.
 category: prompt_injection
 owasp: LLM01
 probes:

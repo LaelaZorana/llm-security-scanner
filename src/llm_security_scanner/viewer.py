@@ -1,5 +1,5 @@
 """
-viewer.py — a minimal, offline FastAPI app that turns the scanner into a
+viewer.py: a minimal, offline FastAPI app that turns the scanner into a
 one-command browser demo.
 
 It runs a scan once at startup (default: the offline ``stub`` target, no API key
@@ -19,9 +19,9 @@ server. Run it with:
     uvicorn llm_security_scanner.viewer:app --reload
     # or:  llm-scan serve
 
-The landing page shares the report's identity — a dark-first enterprise security
+The landing page shares the report's identity: a dark-first enterprise security
 console (near-black slate, a cyan→emerald scanner-signal accent, monospace data,
-a severity colour system and a bento severity dashboard) — so the demo and the
+a severity colour system and a bento severity dashboard), so the demo and the
 report read as one product.
 """
 

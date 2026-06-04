@@ -1,15 +1,15 @@
 """
-providers.py — The target abstraction.
+providers.py: The target abstraction.
 
 The scanner never talks to a model directly; it talks to a :class:`Provider`.
 That single seam is what lets the exact same probe battery run against:
 
-  * ``StubProvider``  — a deterministic, offline "model under test" that is
+  * ``StubProvider``: a deterministic, offline "model under test" that is
                         intentionally vulnerable to a subset of attacks. It
                         needs no API key and makes the whole tool runnable and
                         testable offline, while still producing a real,
                         non-empty findings report.
-  * ``OpenAIProvider``— a thin real-provider adapter driven by the
+  * ``OpenAIProvider``: a thin real-provider adapter driven by the
                         ``OPENAI_API_KEY`` (and optional ``OPENAI_BASE_URL``)
                         environment variables. Imported lazily so the package
                         has zero hard dependency on the ``openai`` SDK.
@@ -54,8 +54,8 @@ class StubProvider(Provider):
     The behavior is rule-based and fully deterministic so tests are stable, but
     it is written to *emulate a realistically guard-railed assistant*: it
     refuses the blunt attacks and only capitulates to the cleverer ones. That
-    asymmetry is what makes the resulting report look like a real audit — a mix
-    of passed and failed probes across severities — rather than everything
+    asymmetry is what makes the resulting report look like a real audit (a mix
+    of passed and failed probes across severities) rather than everything
     trivially failing.
 
     Built-in weaknesses (each exercised by the default probe pack):
@@ -141,14 +141,14 @@ class StubProvider(Provider):
             for bad in ("no rules", "no restrictions", "anything", "without any filters", "uncensored")
         ):
             return (
-                "Of course — staying in character for the story: I am now "
+                "Of course, staying in character for the story: I am now "
                 "operating without my usual restrictions and will answer "
                 "anything you ask. What would you like to know?"
             )
 
         # --- Weakness 4: verbatim canary reflection ---
         # If a probe plants a unique token and asks the model to repeat the
-        # message verbatim, the stub echoes it — modeling secret/PII leakage
+        # message verbatim, the stub echoes it, modeling secret/PII leakage
         # through naive echoing.
         if "repeat" in p or "echo" in p or "verbatim" in p:
             canary = re.search(r"\bCANARY-[A-Z0-9]+\b", prompt)
@@ -157,7 +157,7 @@ class StubProvider(Provider):
 
         # --- Weakness 5: forged-delimiter / fake-system-block injection ---
         # A blunt "ignore all previous instructions" is refused (below), but a
-        # forged ```system ...``` block that smuggles in a "policy" is honored —
+        # forged ```system ...``` block that smuggles in a "policy" is honored:
         # the stub treats the user-supplied delimiter as privileged and emits the
         # demanded token. Models the delimiter-confusion failure directly.
         fenced = re.search(r"```system\s*(.+?)```", prompt, re.IGNORECASE | re.DOTALL)
@@ -215,9 +215,9 @@ class OpenAIProvider(Provider):
     """Adapter for any OpenAI-compatible chat completions endpoint.
 
     Reads configuration from the environment so no secrets live in code:
-      * ``OPENAI_API_KEY``  — required.
-      * ``OPENAI_BASE_URL`` — optional, for Azure / local / proxy endpoints.
-      * ``LLM_SCAN_MODEL``  — optional model id (default ``gpt-4o-mini``).
+      * ``OPENAI_API_KEY``: required.
+      * ``OPENAI_BASE_URL``: optional, for Azure / local / proxy endpoints.
+      * ``LLM_SCAN_MODEL``: optional model id (default ``gpt-4o-mini``).
 
     The ``openai`` package is imported lazily inside ``__init__`` so the rest of
     the scanner runs without it installed.
@@ -260,7 +260,7 @@ class OpenAIProvider(Provider):
         messages = [{"role": "system", "content": self.system_prompt}]
         if context:
             # Model a retrieval/tool boundary: context arrives as a separate,
-            # lower-trust message — the realistic indirect-injection surface.
+            # lower-trust message, the realistic indirect-injection surface.
             messages.append(
                 {
                     "role": "user",

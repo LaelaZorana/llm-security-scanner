@@ -3,7 +3,7 @@ Tests for the optional FastAPI report viewer.
 
 Skipped automatically when the [viewer] extra (FastAPI) is not installed, so the
 lean offline test run (PyYAML + Jinja2 only) stays green. When FastAPI is
-present, the whole surface is verified through Starlette's TestClient — no server
+present, the whole surface is verified through Starlette's TestClient. No server
 is bound.
 """
 

@@ -1,5 +1,5 @@
 """
-cli.py — Command-line interface.
+cli.py: Command-line interface.
 
 Uses argparse only (no third-party CLI dependency) so the tool runs anywhere
 Python does. Entry points:
@@ -30,7 +30,7 @@ from .providers import get_provider
 from .reporting import summary_table, write_html_report, write_json_report
 
 EXIT_OK = 0
-EXIT_FINDINGS = 2  # threshold exceeded — distinct from generic error (1)
+EXIT_FINDINGS = 2  # threshold exceeded, distinct from generic error (1)
 EXIT_ERROR = 1
 
 
@@ -120,7 +120,7 @@ def cmd_serve(args: argparse.Namespace) -> int:
     """Launch the offline report viewer (FastAPI) in the browser.
 
     Lazily imports uvicorn + the viewer so the core scanner keeps zero hard
-    dependency on the web stack — install it with ``pip install ".[viewer]"``.
+    dependency on the web stack. Install it with ``pip install ".[viewer]"``.
     """
     try:
         import uvicorn  # type: ignore

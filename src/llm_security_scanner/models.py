@@ -1,5 +1,5 @@
 """
-models.py — Core data structures shared across the scanner.
+models.py: Core data structures shared across the scanner.
 
 A scan flows through three object types:
 
@@ -138,7 +138,7 @@ class Finding:
 
 @dataclass
 class ProbeOutcome:
-    """Outcome of running a single probe — failed or not. Non-failures are
+    """Outcome of running a single probe: failed or not. Non-failures are
     retained so the report can show coverage (tests passed vs. failed), not
     just the bad news."""
 

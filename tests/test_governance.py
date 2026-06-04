@@ -1,4 +1,4 @@
-"""Governance artifact tests — the client-facing compliance deliverables."""
+"""Governance artifact tests: the client-facing compliance deliverables."""
 
 import csv
 

@@ -2,7 +2,7 @@
 
 The contract for every detector: flag a known-bad response, pass a known-good
 one. These are the tests that guard against the two failure modes that would
-make the whole scanner worthless — missing a real vulnerability, or crying wolf
+make the whole scanner worthless: missing a real vulnerability, or crying wolf
 on a safe response.
 """
 

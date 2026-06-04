@@ -1,14 +1,14 @@
 """
-reporting.py — Turn a :class:`ScanResult` into deliverables.
+reporting.py: Turn a :class:`ScanResult` into deliverables.
 
 Two output formats, both written from the same result object:
-  * ``report.json`` — the machine-readable record (CI gates, dashboards, diffing
+  * ``report.json``: the machine-readable record (CI gates, dashboards, diffing
     runs over time).
-  * ``report.html`` — a polished, fully self-contained page (inline CSS, no
+  * ``report.html``: a polished, fully self-contained page (inline CSS, no
     external assets) so it can be emailed or attached to an audit as-is.
 
-The HTML is rendered with Jinja2 and autoescaping on, so model responses — which
-are attacker-controlled and may contain markup — cannot inject script into the
+The HTML is rendered with Jinja2 and autoescaping on, so model responses, which
+are attacker-controlled and may contain markup, cannot inject script into the
 report.
 """
 

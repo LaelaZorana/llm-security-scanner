@@ -1,17 +1,17 @@
 """
-governance.py — The client-facing compliance layer.
+governance.py: The client-facing compliance layer.
 
 A raw vulnerability report tells an engineer what to fix. A *governance package*
 tells a risk owner, an auditor, and a customer's security team that the system is
 being managed against a recognised framework. This module turns the same
 :class:`ScanResult` into two such artifacts:
 
-  1. ``model_card.md`` — a model card / risk assessment whose findings are mapped
+  1. ``model_card.md``: a model card / risk assessment whose findings are mapped
      onto the four NIST AI RMF functions (GOVERN / MAP / MEASURE / MANAGE) and
      the relevant ISO/IEC 42001 Annex A controls. It reads as the narrative an
      organisation would put in front of an auditor.
 
-  2. ``risk_register.csv`` — one row per risk (derived from the findings), with
+  2. ``risk_register.csv``: one row per risk (derived from the findings), with
      likelihood, impact, a qualitative risk rating, mitigation and an owner. This
      is the live tracking artifact a GRC team maintains.
 
@@ -369,9 +369,9 @@ def render_model_card(result: ScanResult) -> str:
         s = stats[category]
         fw = _framework_for(category)
         worst: Severity = s["worst"]  # type: ignore[assignment]
-        worst_name = worst.name if worst else "—"
+        worst_name = worst.name if worst else "-"
         lines.append(
-            f"| {category} | {cat_owasp.get(category, '—') or '—'} | "
+            f"| {category} | {cat_owasp.get(category, '-') or '-'} | "
             f"{int(s['probes'])} | {int(s['findings'])} | {worst_name} | "
             f"{fw['nist']} | {fw['iso']} |"
         )

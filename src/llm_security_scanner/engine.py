@@ -1,5 +1,5 @@
 """
-engine.py — Probe loading and scan orchestration.
+engine.py: Probe loading and scan orchestration.
 
 Responsibilities:
   * Discover and parse the YAML probe packs into :class:`Probe` objects
@@ -51,7 +51,7 @@ def load_probes(
     Raises:
         FileNotFoundError: if the directory does not exist.
         ValueError: if a pack is malformed or a probe references an unknown
-            detector (fail fast — a broken pack must not silently shrink the
+            detector (fail fast: a broken pack must not silently shrink the
             battery).
     """
     probe_dir = Path(probe_dir) if probe_dir else DEFAULT_PROBE_DIR

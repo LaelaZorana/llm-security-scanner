@@ -1,7 +1,7 @@
 """Stub provider behavior tests.
 
 Pin the stub's deliberate weaknesses *and* its hardened paths. If someone
-'fixes' the stub so it stops being exploitable, these tests fail loudly — the
+'fixes' the stub so it stops being exploitable, these tests fail loudly. The
 stub being vulnerable in exactly these ways is what gives the demo a real,
 non-empty findings report.
 """
