@@ -1,0 +1,59 @@
+name: CI
+
+# Runs the test suite on every push/PR, then runs the LLM security scan itself
+# as a release gate that fails the build on Critical findings. The `scan` job is
+# written to be copy-pasteable into any repo that wants to gate on model safety.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest
+      - name: Run tests (offline)
+        run: python -m pytest -q
+
+  llm-security-scan:
+    name: LLM security scan (gate)
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: pip install .   # installs the package + its deps; provides `llm-scan`
+      # Scans the built-in offline stub. To gate on a live model instead, set
+      # OPENAI_API_KEY in repo secrets and use `--target openai`.
+      - name: Run LLM security scan (fails on Critical)
+        run: |
+          llm-scan run \
+            --target stub \
+            --out ./reports \
+            --fail-on CRITICAL
+      - name: Upload governance package
+        if: always()  # keep the evidence even when the gate fails
+        uses: actions/upload-artifact@v4
+        with:
+          name: llm-security-report
+          path: reports/
