@@ -62,7 +62,7 @@ jobs:
           echo "scan finished (exit $code; 0=clean, 2=findings present as expected for the demo stub)"
       - name: Upload governance package
         if: always()  # keep the evidence even when the gate fails
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: llm-security-report
           path: reports/
